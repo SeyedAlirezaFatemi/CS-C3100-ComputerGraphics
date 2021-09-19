@@ -242,6 +242,14 @@ bool App::handleEvent(const Window::Event &ev)
 			camera_rotation_angle_ -= 0.05 * FW_PI;
 		else if (ev.key == FW_KEY_END)
 			camera_rotation_angle_ += 0.05 * FW_PI;
+		else if (ev.key == FW_KEY_LEFT)
+			this->current_translation_(0, 3) -= 0.05;
+		else if (ev.key == FW_KEY_RIGHT)
+			this->current_translation_(0, 3) += 0.05;
+		else if (ev.key == FW_KEY_UP)
+			this->current_translation_(1, 3) += 0.05;
+		else if (ev.key == FW_KEY_DOWN)
+			this->current_translation_(1, 3) -= 0.05;
 	}
 
 	if (ev.type == Window::EventType_KeyUp)

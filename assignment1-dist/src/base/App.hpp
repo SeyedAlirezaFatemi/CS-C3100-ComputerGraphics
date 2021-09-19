@@ -66,6 +66,7 @@ namespace FW
 
 		// YOUR CODE HERE (R1)
 		// Add a class member to store the current translation.
+		Mat4f current_translation_;
 
 		// EXTRA:
 		// For animation extra credit you can use the framework's Timer class.
