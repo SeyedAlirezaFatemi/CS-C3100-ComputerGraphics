@@ -63,17 +63,25 @@ namespace
 		// 'f' would be a copy of the object instead.
 		// The compiler already knows the type of objects inside the container, so we can
 		// just write 'auto' instead of having to spell out 'array<unsigned, 6>'.
-		for (auto &f : faces)
+		for (const auto &f : faces)
 		{
-
 			// YOUR CODE HERE (R3)
 			// Unpack the indexed data into a vertex array. For every face, you have to
 			// create three vertices and add them to the vector 'vertices'.
-
 			// f[0] is the index of the position of the first vertex
 			// f[1] is the index of the normal of the first vertex
 			// f[2] is the index of the position of the second vertex
 			// ...
+			Vertex vertex;
+			vertex.position = positions[f[0]];
+			vertex.normal = normals[f[1]];
+			vertices.emplace_back(vertex);
+			vertex.position = positions[f[2]];
+			vertex.normal = normals[f[3]];
+			vertices.emplace_back(vertex);
+			vertex.position = positions[f[4]];
+			vertex.normal = normals[f[5]];
+			vertices.emplace_back(vertex);
 		}
 
 		return vertices;
