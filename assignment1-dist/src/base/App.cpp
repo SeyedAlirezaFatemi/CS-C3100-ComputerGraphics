@@ -121,9 +121,13 @@ namespace
 		static const float angle_increment = 2 * FW_PI / faces;
 
 		// Empty array of Vertex structs; every three vertices = one triangle
-		vector<Vertex> vertices;
+		std::vector<Vertex> vertices;
 
 		Vertex v0, v1, v2;
+		v0.position = Vec3f{0, 0, 0};
+		v1.position = Vec3f{0, -height, 0};
+		v2.position = Vec3f{0, -height, 0};
+		float current_angle, previous_angle;
 
 		// Generate one face at a time
 		for (auto i = 0u; i < faces; ++i)
@@ -140,7 +144,13 @@ namespace
 			//    of the ith vertex at the base of the cone. Z-coordinate is very similar.
 			// - For the normal calculation, you'll want to use the cross() function for
 			//   cross product, and Vec3f's .normalized() or .normalize() methods.
-
+			current_angle = (i + 1) * angle_increment;
+			previous_angle = i * angle_increment;
+			v1.position.x = FW::cos(previous_angle) * radius;
+			v1.position.z = FW::sin(previous_angle) * radius;
+			v2.position.x = FW::cos(current_angle) * radius;
+			v2.position.z = FW::sin(current_angle) * radius;
+			v0.normal = v1.normal = v2.normal = FW::normalize(FW::cross(v0.position - v1.position, v0.position - v2.position));
 			// Then we add the vertices to the array.
 			// .push_back() grows the size of the vector by one, copies its argument,
 			// and places the copy at the back of the vector.
@@ -335,7 +345,8 @@ void App::initRendering()
 				vec3(1, 0, 0), vec3(1, 0, 1), vec3(1, 1, 0));
 			const vec3 directionToLight = normalize(vec3(0.5, 0.5, -0.6));
 
-			void main() {
+			void main()
+			{
 				// EXTRA: oops, someone forgot to transform normals here...
 				float clampedCosine = clamp(dot(aNormal, directionToLight), 0.0, 1.0);
 				vec3 litColor = vec3(clampedCosine);
