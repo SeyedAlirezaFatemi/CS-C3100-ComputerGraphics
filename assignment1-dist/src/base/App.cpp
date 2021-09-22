@@ -480,16 +480,20 @@ vector<Vertex> App::loadObjFileModel(string filename)
 		iss >> s;
 
 		if (s == "v")
-		{	// vertex position
+		{ // vertex position
 			// YOUR CODE HERE (R4)
 			// Read the three vertex coordinates (x, y, z) into 'v'.
 			// Store a copy of 'v' in 'positions'.
 			// See std::vector documentation for push_back.
+			iss >> v.x >> v.y >> v.z;
+			positions.push_back(v);
 		}
 		else if (s == "vn")
-		{	// normal
+		{ // normal
 			// YOUR CODE HERE (R4)
 			// Similar to above.
+			iss >> v.x >> v.y >> v.z;
+			normals.push_back(v);
 		}
 		else if (s == "f")
 		{ // face
@@ -505,7 +509,18 @@ vector<Vertex> App::loadObjFileModel(string filename)
 			// the texture indices by reading them into a temporary variable.
 
 			unsigned sink; // Temporary variable for reading the unused texture indices.
+			for (size_t i = 0; i < 3; i++)
+			{
+				iss >> f[2 * i];
+				iss >> sink;
+				iss >> f[2 * i + 1];
+			}
+			for (size_t i = 0; i < 6; i++)
+			{
+				f[i] -= 1;
+			}
 
+			faces.push_back(f);
 			// Note that in C++ we index things starting from 0, but face indices in OBJ format start from 1.
 			// If you don't adjust for that, you'll index past the range of your vectors and get a crash.
 
