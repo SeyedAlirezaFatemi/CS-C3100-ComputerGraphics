@@ -20,7 +20,7 @@ namespace FW
 		GLuint static_vao, dynamic_vao;
 		GLuint shader_program;
 		GLuint static_vertex_buffer, dynamic_vertex_buffer;
-		GLuint model_to_world_uniform, world_to_clip_uniform, shading_toggle_uniform;
+		GLuint model_to_world_uniform, world_to_clip_uniform, shading_toggle_uniform, normal_transformation_uniform;
 	};
 
 	class App : public Window::Listener
