@@ -80,7 +80,9 @@ namespace FW
 		// For animation extra credit you can use the framework's Timer class.
 		// The .start() and .unstart() methods start and stop the timer; when it's
 		// running, .end() gives you seconds passed after last call to .end().
-		// Timer timer_;
+		Timer timer_;
+		float prev_time;
+		bool animating_;
 	};
 
 }

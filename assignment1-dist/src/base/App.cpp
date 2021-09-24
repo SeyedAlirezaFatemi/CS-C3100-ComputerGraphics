@@ -181,7 +181,9 @@ App::App(void)
 	  object_rotation_angle_(0.0f),
 	  object_x_scale_(1.0f),
 	  camera_translation_(0.0f),
-	  camera_x_rotation_angle_(0.0f)
+	  camera_x_rotation_angle_(0.0f),
+	  animating_(false),
+	  prev_time(0.0f)
 {
 	static_assert(is_standard_layout<Vertex>::value, "struct Vertex must be standard layout to use offsetof");
 	initRendering();
@@ -213,6 +215,11 @@ void App::streamGeometry(const std::vector<Vertex> &vertices)
 
 bool App::handleEvent(const Window::Event &ev)
 {
+	if (this->animating_)
+	{
+		this->camera_rotation_angle_ += (this->timer_.getElapsed() - prev_time) * 0.1 * FW_PI;
+		this->prev_time = this->timer_.getElapsed();
+	}
 	if (model_changed_)
 	{
 		model_changed_ = false;
@@ -301,6 +308,20 @@ bool App::handleEvent(const Window::Event &ev)
 		else if (ev.key == FW_KEY_WHEEL_DOWN)
 		{
 			this->camera_translation_ -= 0.1;
+		}
+		else if (ev.key == FW_KEY_R)
+		{
+			if (this->animating_)
+			{
+				this->animating_ = false;
+				this->timer_.end();
+			}
+			else
+			{
+				this->animating_ = true;
+				this->timer_.start();
+			}
+			this->prev_time = 0.0;
 		}
 	}
 
