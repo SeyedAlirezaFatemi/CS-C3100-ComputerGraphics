@@ -65,13 +65,16 @@ namespace FW
 
 		size_t vertex_count_;
 
-		float camera_rotation_angle_;
+		float camera_rotation_angle_; // Rotation around the y axis
 
 		// YOUR CODE HERE (R1)
 		// Add a class member to store the current translation.
 		Mat4f object_transformation_matrix_;
 		float object_rotation_angle_;
 		float object_x_scale_;
+
+		float camera_translation_;
+		float camera_x_rotation_angle_; // Rotation around the x axis
 
 		// EXTRA:
 		// For animation extra credit you can use the framework's Timer class.

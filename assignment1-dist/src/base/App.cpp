@@ -179,7 +179,9 @@ App::App(void)
 	  shading_mode_changed_(false),
 	  camera_rotation_angle_(0.0f),
 	  object_rotation_angle_(0.0f),
-	  object_x_scale_(1.0f)
+	  object_x_scale_(1.0f),
+	  camera_translation_(0.0f),
+	  camera_x_rotation_angle_(0.0f)
 {
 	static_assert(is_standard_layout<Vertex>::value, "struct Vertex must be standard layout to use offsetof");
 	initRendering();
@@ -292,6 +294,14 @@ bool App::handleEvent(const Window::Event &ev)
 			this->object_x_scale_ -= 0.05;
 			this->update_scale(prev_scale);
 		}
+		else if (ev.key == FW_KEY_WHEEL_UP)
+		{
+			this->camera_translation_ += 0.1;
+		}
+		else if (ev.key == FW_KEY_WHEEL_DOWN)
+		{
+			this->camera_translation_ -= 0.1;
+		}
 	}
 
 	if (ev.type == Window::EventType_KeyUp)
@@ -305,6 +315,11 @@ bool App::handleEvent(const Window::Event &ev)
 		// Event::mouseDragging tells whether some mouse buttons are currently down.
 		// If you want to know which ones, you have to keep track of the button down/up events
 		// (e.g. FW_KEY_MOUSE_LEFT).
+		if (ev.mouseDragging)
+		{
+			this->camera_rotation_angle_ += ev.mouseDelta[0] * 0.01;
+			this->camera_x_rotation_angle_ += ev.mouseDelta[1] * 0.01;
+		}
 	}
 
 	if (ev.type == Window::EventType_Close)
@@ -442,11 +457,11 @@ void App::render()
 	// Our camera is aimed at origin, and orbits around origin at fixed distance.
 	static const float camera_distance = 2.1f;
 	Mat4f C;
-	Mat3f rot = Mat3f::rotation(Vec3f(0, 1, 0), -camera_rotation_angle_);
+	Mat3f rot = Mat3f::rotation(Vec3f(1, 0, 0), -this->camera_x_rotation_angle_) * Mat3f::rotation(Vec3f(0, 1, 0), -camera_rotation_angle_);
 	C.setCol(0, Vec4f(rot.getCol(0), 0));
 	C.setCol(1, Vec4f(rot.getCol(1), 0));
 	C.setCol(2, Vec4f(rot.getCol(2), 0));
-	C.setCol(3, Vec4f(0, 0, camera_distance, 1));
+	C.setCol(3, Vec4f(0, 0, camera_distance + this->camera_translation_, 1));
 
 	// Simple perspective.
 	static const float fnear = 0.1f, ffar = 4.0f;
