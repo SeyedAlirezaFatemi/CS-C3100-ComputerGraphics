@@ -177,7 +177,9 @@ App::App(void)
 	  model_changed_(true),
 	  shading_toggle_(false),
 	  shading_mode_changed_(false),
-	  camera_rotation_angle_(0.0f)
+	  camera_rotation_angle_(0.0f),
+	  object_rotation_angle_(0.0f),
+	  object_x_scale_(1.0f)
 {
 	static_assert(is_standard_layout<Vertex>::value, "struct Vertex must be standard layout to use offsetof");
 	initRendering();
@@ -261,13 +263,35 @@ bool App::handleEvent(const Window::Event &ev)
 		else if (ev.key == FW_KEY_END)
 			camera_rotation_angle_ += 0.05 * FW_PI;
 		else if (ev.key == FW_KEY_LEFT)
-			this->current_translation_(0, 3) -= 0.05;
+			this->object_transformation_matrix_(0, 3) -= 0.05;
 		else if (ev.key == FW_KEY_RIGHT)
-			this->current_translation_(0, 3) += 0.05;
+			this->object_transformation_matrix_(0, 3) += 0.05;
 		else if (ev.key == FW_KEY_UP)
-			this->current_translation_(1, 3) += 0.05;
+			this->object_transformation_matrix_(1, 3) += 0.05;
 		else if (ev.key == FW_KEY_DOWN)
-			this->current_translation_(1, 3) -= 0.05;
+			this->object_transformation_matrix_(1, 3) -= 0.05;
+		else if (ev.key == FW_KEY_A)
+		{
+			this->object_rotation_angle_ += 0.05 * FW_PI;
+			this->update_rotation();
+		}
+		else if (ev.key == FW_KEY_D)
+		{
+			this->object_rotation_angle_ -= 0.05 * FW_PI;
+			this->update_rotation();
+		}
+		else if (ev.key == FW_KEY_Q)
+		{
+			float prev_scale{this->object_x_scale_};
+			this->object_x_scale_ += 0.05;
+			this->update_scale(prev_scale);
+		}
+		else if (ev.key == FW_KEY_E)
+		{
+			float prev_scale{this->object_x_scale_};
+			this->object_x_scale_ -= 0.05;
+			this->update_scale(prev_scale);
+		}
 	}
 
 	if (ev.type == Window::EventType_KeyUp)
@@ -297,6 +321,29 @@ bool App::handleEvent(const Window::Event &ev)
 	window_.repaint();
 
 	return false;
+}
+
+void App::update_scale(float prev_scale)
+{
+	this->object_transformation_matrix_(0, 0) = this->object_transformation_matrix_(0, 0) / prev_scale * this->object_x_scale_;
+}
+
+void App::update_rotation()
+{
+	Mat3f rot = Mat3f::rotation(Vec3f(0, 1, 0), -this->object_rotation_angle_);
+	this->object_transformation_matrix_.setCol(0, Vec4f(rot.getCol(0), 0));
+	this->object_transformation_matrix_.setCol(1, Vec4f(rot.getCol(1), 0));
+	this->object_transformation_matrix_.setCol(2, Vec4f(rot.getCol(2), 0));
+	/**
+	 * cos(\theta)	0	sin(\theta)
+	 * 0			1	0
+	 * -sin(\theta)	0	cos(\theta)
+	 **/
+	// this->current_transformation_(0, 0) = FW::cos(this->object_rotation_angle_);
+	// this->current_transformation_(0, 2) = FW::sin(this->object_rotation_angle_);
+	// this->current_transformation_(0, 2) = -FW::sin(this->object_rotation_angle_);
+	// this->current_transformation_(2, 2) = FW::cos(this->object_rotation_angle_);
+	this->object_transformation_matrix_(0, 0) *= this->object_x_scale_;
 }
 
 void App::initRendering()
@@ -353,8 +400,7 @@ void App::initRendering()
 				vec3(1, 0, 0), vec3(1, 0, 1), vec3(1, 1, 0));
 			const vec3 directionToLight = normalize(vec3(0.5, 0.5, -0.6));
 
-			void main()
-			{
+			void main() {
 				// EXTRA: oops, someone forgot to transform normals here...
 				float clampedCosine = clamp(dot(aNormal, directionToLight), 0.0, 1.0);
 				vec3 litColor = vec3(clampedCosine);
@@ -425,7 +471,7 @@ void App::render()
 
 	// YOUR CODE HERE (R1)
 	// Set the model space -> world space transform to translate the model according to user input.
-	Mat4f modelToWorld(this->current_translation_);
+	Mat4f modelToWorld(this->object_transformation_matrix_);
 
 	// Draw the model with your model-to-world transformation.
 	glUniformMatrix4fv(gl_.model_to_world_uniform, 1, GL_FALSE, modelToWorld.getPtr());
@@ -440,7 +486,7 @@ void App::render()
 	GLContext::checkErrors();
 
 	// Show status messages. You may find it useful to show some debug information in a message.
-	common_ctrl_.message(sprintf("Use Home/End to rotate camera."), "instructions");
+	common_ctrl_.message(sprintf("Use Home/End to rotate camera. Use A/D to rotate object. Use Q/E to scale object."), "instructions");
 	common_ctrl_.message(sprintf("Camera is at (%.2f %.2f %.2f) looking towards origin.",
 								 -FW::sin(camera_rotation_angle_) * camera_distance, 0.0f,
 								 -FW::cos(camera_rotation_angle_) * camera_distance),

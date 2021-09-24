@@ -50,6 +50,9 @@ namespace FW
 
 		void streamGeometry(const std::vector<Vertex> &vertices);
 
+		void update_rotation();
+		void update_scale(float prev_scale);
+
 		Window window_;
 		CommonControls common_ctrl_;
 
@@ -66,7 +69,9 @@ namespace FW
 
 		// YOUR CODE HERE (R1)
 		// Add a class member to store the current translation.
-		Mat4f current_translation_;
+		Mat4f object_transformation_matrix_;
+		float object_rotation_angle_;
+		float object_x_scale_;
 
 		// EXTRA:
 		// For animation extra credit you can use the framework's Timer class.
