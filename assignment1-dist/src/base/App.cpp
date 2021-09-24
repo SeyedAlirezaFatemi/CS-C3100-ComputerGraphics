@@ -438,7 +438,8 @@ void App::initRendering()
 
 			void main() {
 				// EXTRA: oops, someone forgot to transform normals here...
-				float clampedCosine = clamp(dot(aNormal, directionToLight), 0.0, 1.0);
+				vec3 fixedNormal = normalize((transpose(inverse(uWorldToClip * uModelToWorld)) * vec4(aNormal, 1.0)).xyz);
+				float clampedCosine = clamp(dot(fixedNormal, directionToLight), 0.0, 1.0);
 				vec3 litColor = vec3(clampedCosine);
 				vec3 generatedColor = distinctColors[gl_VertexID % 6];
 				// gl_Position is a built-in output variable that marks the final position
