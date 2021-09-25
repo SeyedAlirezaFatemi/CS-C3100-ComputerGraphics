@@ -613,6 +613,7 @@ vector<Vertex> App::loadPLYFileModel(string filename)
 		istringstream iss(line);
 		// Read the first token from the line into string 's'.
 		iss >> s;
+		// Read header
 		if (state == 0)
 		{
 			if (s == "format")
@@ -644,6 +645,7 @@ vector<Vertex> App::loadPLYFileModel(string filename)
 			continue;
 		}
 		int loc = 0;
+		// Read line contents.
 		while (true)
 		{
 			if (s == "{")
@@ -665,6 +667,7 @@ vector<Vertex> App::loadPLYFileModel(string filename)
 			}
 			iss >> s;
 		}
+		// Put line contents into appropriate vertex or face.
 		if (state == 1)
 		{
 			for (size_t i = 0; i < 3; i++)
@@ -690,6 +693,10 @@ vector<Vertex> App::loadPLYFileModel(string filename)
 			faces.push_back(f);
 			normals.push_back(FW::normalize(FW::cross(positions[f[0]] - positions[f[2]], positions[f[0]] - positions[f[4]])));
 			counter++;
+			if (counter == face_count)
+			{
+				break;
+			}
 		}
 	}
 
