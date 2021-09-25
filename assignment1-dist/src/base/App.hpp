@@ -47,6 +47,8 @@ namespace FW
 		void initRendering();
 		void render();
 		std::vector<Vertex> loadObjFileModel(std::string filename);
+		// EXTRA
+		std::vector<Vertex> loadPLYFileModel(std::string filename);
 
 		void streamGeometry(const std::vector<Vertex> &vertices);
 

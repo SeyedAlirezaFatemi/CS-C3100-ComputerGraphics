@@ -238,10 +238,25 @@ bool App::handleEvent(const Window::Event &ev)
 			break;
 		case MODEL_FROM_FILE:
 		{
+			// EXTRA: Load PLY.
 			auto filename = window_.showFileLoadDialog("Load new mesh");
 			if (filename.getLength())
 			{
-				streamGeometry(loadObjFileModel(filename.getPtr()));
+				auto ext = filename.substring(filename.lastIndexOf(".") + 1).toLower();
+				if (ext == "ply")
+				{
+					streamGeometry(loadPLYFileModel(filename.getPtr()));
+				}
+				else if (ext == "obj")
+				{
+					cout << "obj";
+					streamGeometry(loadObjFileModel(filename.getPtr()));
+				}
+				else
+				{
+					current_model_ = MODEL_EXAMPLE;
+					model_changed_ = true;
+				}
 			}
 			else
 			{
@@ -562,6 +577,120 @@ void App::render()
 								 -FW::sin(camera_rotation_angle_) * camera_distance, 0.0f,
 								 -FW::cos(camera_rotation_angle_) * camera_distance),
 						 "camerainfo");
+}
+
+vector<Vertex> App::loadPLYFileModel(string filename)
+{
+	// http://paulbourke.net/dataformats/ply/
+	// We assume that the input mesh is a pure triangle mesh.
+	window_.showModalMessage(sprintf("Loading mesh from '%s'...", filename.c_str()));
+
+	vector<Vec3f> positions, normals;
+	vector<array<unsigned, 6>> faces;
+
+	// Open input file stream for reading.
+	ifstream input(filename, ios::in);
+
+	// TODO: Add support for normals.
+	int state = 0; // 0: in header | 1: in vertex list | 2: in face list | 3: in normals list
+	int vertex_count, face_count;
+	int counter = 0;
+
+	// Read the file line by line.
+	string line;
+
+	// Temporary objects to read data into.
+	Vec3f v;
+	string s;
+	std::vector<std::string> items(3);
+	array<unsigned, 6> f; // Face index array
+	while (getline(input, line))
+	{
+		// Create a stream from the string to pick out one value at a time.
+		istringstream iss(line);
+		// Read the first token from the line into string 's'.
+		iss >> s;
+		if (state == 0)
+		{
+			if (s == "element")
+			{
+				iss >> s;
+				if (s == "vertex")
+				{
+					iss >> vertex_count;
+				}
+				else if (s == "face")
+				{
+					iss >> face_count;
+				}
+			}
+			if (s == "end_header")
+			{
+				state = 1;
+			}
+			continue;
+		}
+		int loc = 0;
+		while (true)
+		{
+			if (s == "{")
+			{
+				break;
+			}
+			if ((loc + 1) > items.size())
+			{
+				items.push_back(s);
+			}
+			else
+			{
+				items[loc] = s;
+			}
+			loc++;
+			if (iss.eof())
+			{
+				break;
+			}
+			iss >> s;
+		}
+		if (state == 1)
+		{
+			for (size_t i = 0; i < 3; i++)
+			{
+				v[i] = std::stof(items[i]);
+			}
+			positions.push_back(v);
+			normals.push_back(Vec3f(1.0, 1.0, 1.0));
+			counter++;
+			if (counter == vertex_count)
+			{
+				state = 2;
+			}
+		}
+		else if (state == 2)
+		{
+			// Ignore the first item
+			for (size_t i = 1; i < 4; i++)
+			{
+				f[2 * (i - 1)] = std::stoi(items[i]);
+				f[2 * (i - 1) + 1] = 0;
+			}
+			faces.push_back(f);
+		}
+	}
+	// for (auto i : positions)
+	// 	std::cout << i.x << ' ' << i.y << ' ' << i.z << ' ' << endl;
+	// std::cout << endl
+	// 		  << "faces" << endl;
+	// for (auto face : faces)
+	// {
+	// 	for (size_t i = 0; i < 5; i += 2)
+	// 	{
+	// 		std::cout << face[i] << ' ';
+	// 	}
+	// }
+
+	common_ctrl_.message(("Loaded mesh from " + filename).c_str());
+	return unpackIndexedData(positions, normals, faces);
 }
 
 vector<Vertex> App::loadObjFileModel(string filename)
