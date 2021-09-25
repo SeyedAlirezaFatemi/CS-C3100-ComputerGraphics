@@ -183,7 +183,8 @@ App::App(void)
 	  camera_translation_(0.0f),
 	  camera_x_rotation_angle_(0.0f),
 	  animating_(false),
-	  prev_time(0.0f)
+	  prev_time(0.0f),
+	  fov_(FW_PI / 2.0)
 {
 	static_assert(is_standard_layout<Vertex>::value, "struct Vertex must be standard layout to use offsetof");
 	initRendering();
@@ -322,6 +323,14 @@ bool App::handleEvent(const Window::Event &ev)
 				this->timer_.start();
 			}
 			this->prev_time = 0.0;
+		}
+		else if (ev.key == FW_KEY_Z)
+		{
+			this->fov_ += 0.05 * FW_PI;
+		}
+		else if (ev.key == FW_KEY_C)
+		{
+			this->fov_ -= 0.05 * FW_PI;
 		}
 	}
 
@@ -480,8 +489,8 @@ void App::render()
 
 	// Extra: Easy viewport correction
 	FW::Vec2i window_size = this->window_.getSize();
-	int size = FW::min(window_size);
-	glViewport((window_size[0] - size) / 2, (window_size[1] - size) / 2, size, size);
+	// int size = FW::min(window_size);
+	// glViewport((window_size[0] - size) / 2, (window_size[1] - size) / 2, size, size);
 
 	// Enable depth testing.
 	glEnable(GL_DEPTH_TEST);
@@ -502,8 +511,14 @@ void App::render()
 	// Simple perspective.
 	static const float fnear = 0.1f, ffar = 4.0f;
 	Mat4f P;
-	P.setCol(0, Vec4f(1, 0, 0, 0));
-	P.setCol(1, Vec4f(0, 1, 0, 0));
+	// Resources:
+	// https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/building-basic-perspective-projection-matrix
+	// http://learnwebgl.brown37.net/08_projections/projections_perspective.html
+	float s = 1.0 / FW::tan(this->fov_ / 2.0);
+	float aspect = (window_size[0] * 1.0) / (window_size[1] * 1.0);
+	P.setCol(0, Vec4f(s, 0, 0, 0));
+	P.setCol(1, Vec4f(0, s * aspect, 0, 0));
+
 	P.setCol(2, Vec4f(0, 0, (ffar + fnear) / (ffar - fnear), 1));
 	P.setCol(3, Vec4f(0, 0, -2 * ffar * fnear / (ffar - fnear), 0));
 
@@ -542,7 +557,7 @@ void App::render()
 	GLContext::checkErrors();
 
 	// Show status messages. You may find it useful to show some debug information in a message.
-	common_ctrl_.message(sprintf("Use Home/End to rotate camera. Use A/D to rotate object. Use Q/E to scale object."), "instructions");
+	common_ctrl_.message(sprintf("Use Home/End to rotate camera. Use A/D to rotate object. Use Q/E to scale object.\nUse Z/C to change FOV."), "instructions");
 	common_ctrl_.message(sprintf("Camera is at (%.2f %.2f %.2f) looking towards origin.",
 								 -FW::sin(camera_rotation_angle_) * camera_distance, 0.0f,
 								 -FW::cos(camera_rotation_angle_) * camera_distance),

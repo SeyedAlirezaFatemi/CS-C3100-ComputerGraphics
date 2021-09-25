@@ -83,6 +83,9 @@ namespace FW
 		Timer timer_;
 		float prev_time;
 		bool animating_;
+
+		// EXTRA: Viewport and perspective
+		float fov_;
 	};
 
 }
