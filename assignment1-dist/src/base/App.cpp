@@ -478,6 +478,11 @@ void App::render()
 	glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	// Extra: Easy viewport correction
+	FW::Vec2i window_size = this->window_.getSize();
+	int size = FW::min(window_size);
+	glViewport((window_size[0] - size) / 2, (window_size[1] - size) / 2, size, size);
+
 	// Enable depth testing.
 	glEnable(GL_DEPTH_TEST);
 
