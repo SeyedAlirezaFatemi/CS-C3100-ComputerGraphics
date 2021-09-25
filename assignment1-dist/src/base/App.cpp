@@ -583,6 +583,7 @@ vector<Vertex> App::loadPLYFileModel(string filename)
 {
 	// http://paulbourke.net/dataformats/ply/
 	// We assume that the input mesh is a pure triangle mesh.
+
 	window_.showModalMessage(sprintf("Loading mesh from '%s'...", filename.c_str()));
 
 	vector<Vec3f> positions, normals;
@@ -591,19 +592,21 @@ vector<Vertex> App::loadPLYFileModel(string filename)
 	// Open input file stream for reading.
 	ifstream input(filename, ios::in);
 
-	// TODO: Add support for normals.
-	int state = 0; // 0: in header | 1: in vertex list | 2: in face list | 3: in normals list
+	int state = 0; // 0: in header | 1: in vertex list | 2: in face list
 	int vertex_count, face_count;
 	int counter = 0;
 
 	// Read the file line by line.
 	string line;
 
+	bool failed = false;
+
 	// Temporary objects to read data into.
 	Vec3f v;
 	string s;
 	std::vector<std::string> items(3);
 	array<unsigned, 6> f; // Face index array
+
 	while (getline(input, line))
 	{
 		// Create a stream from the string to pick out one value at a time.
@@ -612,6 +615,16 @@ vector<Vertex> App::loadPLYFileModel(string filename)
 		iss >> s;
 		if (state == 0)
 		{
+			if (s == "format")
+			{
+				iss >> s;
+				if (s != "ascii")
+				{
+					// Only ascii supported.
+					failed = true;
+					break;
+				}
+			}
 			if (s == "element")
 			{
 				iss >> s;
@@ -659,11 +672,11 @@ vector<Vertex> App::loadPLYFileModel(string filename)
 				v[i] = std::stof(items[i]);
 			}
 			positions.push_back(v);
-			normals.push_back(Vec3f(1.0, 1.0, 1.0));
 			counter++;
 			if (counter == vertex_count)
 			{
 				state = 2;
+				counter = 0;
 			}
 		}
 		else if (state == 2)
@@ -672,22 +685,18 @@ vector<Vertex> App::loadPLYFileModel(string filename)
 			for (size_t i = 1; i < 4; i++)
 			{
 				f[2 * (i - 1)] = std::stoi(items[i]);
-				f[2 * (i - 1) + 1] = 0;
+				f[2 * (i - 1) + 1] = counter;
 			}
 			faces.push_back(f);
+			normals.push_back(FW::normalize(FW::cross(positions[f[0]] - positions[f[2]], positions[f[0]] - positions[f[4]])));
+			counter++;
 		}
 	}
-	// for (auto i : positions)
-	// 	std::cout << i.x << ' ' << i.y << ' ' << i.z << ' ' << endl;
-	// std::cout << endl
-	// 		  << "faces" << endl;
-	// for (auto face : faces)
-	// {
-	// 	for (size_t i = 0; i < 5; i += 2)
-	// 	{
-	// 		std::cout << face[i] << ' ';
-	// 	}
-	// }
+
+	if (failed)
+	{
+		common_ctrl_.message("Only ascii PLY format supported");
+	}
 
 	common_ctrl_.message(("Loaded mesh from " + filename).c_str());
 	return unpackIndexedData(positions, normals, faces);
