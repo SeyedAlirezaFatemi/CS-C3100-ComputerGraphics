@@ -183,7 +183,7 @@ App::App(void)
 	  camera_translation_(0.0f),
 	  camera_x_rotation_angle_(0.0f),
 	  animating_(false),
-	  prev_time(0.0f),
+	  prev_time_(0.0f),
 	  fov_(FW_PI / 2.0)
 {
 	static_assert(is_standard_layout<Vertex>::value, "struct Vertex must be standard layout to use offsetof");
@@ -218,8 +218,8 @@ bool App::handleEvent(const Window::Event &ev)
 {
 	if (this->animating_)
 	{
-		this->camera_rotation_angle_ += (this->timer_.getElapsed() - prev_time) * 0.1 * FW_PI;
-		this->prev_time = this->timer_.getElapsed();
+		this->camera_rotation_angle_ += (this->timer_.getElapsed() - prev_time_) * 0.1 * FW_PI;
+		this->prev_time_ = this->timer_.getElapsed();
 	}
 	if (model_changed_)
 	{
@@ -322,7 +322,7 @@ bool App::handleEvent(const Window::Event &ev)
 				this->animating_ = true;
 				this->timer_.start();
 			}
-			this->prev_time = 0.0;
+			this->prev_time_ = 0.0;
 		}
 		else if (ev.key == FW_KEY_Z)
 		{

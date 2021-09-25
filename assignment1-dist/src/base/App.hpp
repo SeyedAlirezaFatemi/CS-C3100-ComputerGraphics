@@ -81,7 +81,7 @@ namespace FW
 		// The .start() and .unstart() methods start and stop the timer; when it's
 		// running, .end() gives you seconds passed after last call to .end().
 		Timer timer_;
-		float prev_time;
+		float prev_time_;
 		bool animating_;
 
 		// EXTRA: Viewport and perspective
