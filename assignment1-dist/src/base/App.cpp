@@ -5,7 +5,7 @@
 #include "base/Main.hpp"
 #include "gpu/Buffer.hpp"
 #include "gpu/GLContext.hpp"
-#include "updatable_priority_queue.h"
+#include "updatable_priority_queue.hpp"
 #include "utility.hpp"
 
 #include <algorithm>
