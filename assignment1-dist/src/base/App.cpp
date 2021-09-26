@@ -188,7 +188,7 @@ App::App(void)
     common_ctrl_.addToggle((S32 *) &current_model_, MODEL_USER_GENERATED, FW_KEY_2, "Generated cone (2)", &model_changed_);
     common_ctrl_.addToggle((S32 *) &current_model_, MODEL_FROM_INDEXED_DATA, FW_KEY_3, "Unpacked tetrahedron (3)", &model_changed_);
     common_ctrl_.addToggle((S32 *) &current_model_, MODEL_FROM_FILE, FW_KEY_4, "Model loaded from file (4)", &model_changed_);
-    common_ctrl_.addToggle((S32 *) &current_model_, SIMPLIFIED_MODEL_FROM_FILE, FW_KEY_5, "Model loaded from file and simplify (5)", &model_changed_);
+    common_ctrl_.addToggle((S32 *) &current_model_, SIMPLIFIED_MODEL_FROM_FILE, FW_KEY_5, "Model loaded from file and simplified (5)", &model_changed_);
     common_ctrl_.addSeparator();
     common_ctrl_.addToggle(&shading_toggle_, FW_KEY_T, "Toggle shading mode (T)", &shading_mode_changed_);
 
@@ -531,7 +531,7 @@ void App::render() {
     GLContext::checkErrors();
 
     // Show status messages. You may find it useful to show some debug information in a message.
-    common_ctrl_.message(sprintf("Use Home/End to rotate camera. Use A/D to rotate object. Use Q/E to scale object.\nUse Z/C to change FOV."), "instructions");
+    common_ctrl_.message(sprintf("Use Home/End to rotate camera. Use A/D to rotate object. Use Q/E to scale object.\nUse Z/C to change FOV. Use R to animate."), "instructions");
     common_ctrl_.message(sprintf("Camera is at (%.2f %.2f %.2f) looking towards origin.",
                                  -sin(camera_rotation_angle_) * camera_distance, 0.0f,
                                  -cos(camera_rotation_angle_) * camera_distance),
