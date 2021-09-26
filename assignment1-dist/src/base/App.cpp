@@ -175,7 +175,7 @@ App::App(void)
       camera_rotation_angle_(0.0f),
       object_rotation_angle_(0.0f),
       object_x_scale_(1.0f),
-      camera_translation_(0.0f),
+      camera_z_translation_(0.0f),
       camera_x_rotation_angle_(0.0f),
       prev_time_(0.0f),
       animating_(false),
@@ -188,6 +188,7 @@ App::App(void)
     common_ctrl_.addToggle((S32 *) &current_model_, MODEL_USER_GENERATED, FW_KEY_2, "Generated cone (2)", &model_changed_);
     common_ctrl_.addToggle((S32 *) &current_model_, MODEL_FROM_INDEXED_DATA, FW_KEY_3, "Unpacked tetrahedron (3)", &model_changed_);
     common_ctrl_.addToggle((S32 *) &current_model_, MODEL_FROM_FILE, FW_KEY_4, "Model loaded from file (4)", &model_changed_);
+    common_ctrl_.addToggle((S32 *) &current_model_, SIMPLIFIED_MODEL_FROM_FILE, FW_KEY_5, "Model loaded from file and simplify (5)", &model_changed_);
     common_ctrl_.addSeparator();
     common_ctrl_.addToggle(&shading_toggle_, FW_KEY_T, "Toggle shading mode (T)", &shading_mode_changed_);
 
@@ -230,7 +231,11 @@ bool App::handleEvent(const Window::Event &ev) {
                 auto filename = window_.showFileLoadDialog("Load new mesh");
                 if (filename.getLength()) {
                     auto ext = filename.substring(filename.lastIndexOf(".") + 1).toLower();
-                    if (ext == "ply") { streamGeometry(loadPLYFileModel(filename.getPtr())); } else if (ext == "obj") { streamGeometry(loadObjFileModel(filename.getPtr())); } else {
+                    if (ext == "ply") {
+                        streamGeometry(loadPLYFileModel(filename.getPtr(), false));
+                    } else if (ext == "obj") {
+                        streamGeometry(loadObjFileModel(filename.getPtr()));
+                    } else {
                         current_model_ = MODEL_EXAMPLE;
                         model_changed_ = true;
                     }
@@ -238,10 +243,23 @@ bool App::handleEvent(const Window::Event &ev) {
                     current_model_ = MODEL_EXAMPLE;
                     model_changed_ = true;
                 }
-            }
-            break;
-            case SIMPLIFIED_MODEL_FROM_FILE: { }
-            break;
+            } break;
+            case SIMPLIFIED_MODEL_FROM_FILE: {
+                // EXTRA: Load PLY and simplify.
+                auto filename = window_.showFileLoadDialog("Load new mesh");
+                if (filename.getLength()) {
+                    auto ext = filename.substring(filename.lastIndexOf(".") + 1).toLower();
+                    if (ext == "ply") {
+                        streamGeometry(loadPLYFileModel(filename.getPtr(), true));
+                    } else {
+                        current_model_ = MODEL_EXAMPLE;
+                        model_changed_ = true;
+                    }
+                } else {
+                    current_model_ = MODEL_EXAMPLE;
+                    model_changed_ = true;
+                }
+            } break;
             default:
                 assert(false && "invalid model type");
         }
@@ -259,11 +277,16 @@ bool App::handleEvent(const Window::Event &ev) {
         // Visual Studio tip: you can right-click an identifier like FW_KEY_HOME
         // and "Go to definition" to jump directly to where the identifier is defined.
         if (ev.key == FW_KEY_HOME) camera_rotation_angle_ -= 0.05 * FW_PI;
-        else if (ev.key == FW_KEY_END) camera_rotation_angle_ += 0.05 * FW_PI;
-        else if (ev.key == FW_KEY_LEFT) this->object_transformation_matrix_(0, 3) -= 0.05;
-        else if (ev.key == FW_KEY_RIGHT) this->object_transformation_matrix_(0, 3) += 0.05;
-        else if (ev.key == FW_KEY_UP) this->object_transformation_matrix_(1, 3) += 0.05;
-        else if (ev.key == FW_KEY_DOWN) this->object_transformation_matrix_(1, 3) -= 0.05;
+        else if (ev.key == FW_KEY_END)
+            camera_rotation_angle_ += 0.05 * FW_PI;
+        else if (ev.key == FW_KEY_LEFT)
+            this->object_transformation_matrix_(0, 3) -= 0.05;
+        else if (ev.key == FW_KEY_RIGHT)
+            this->object_transformation_matrix_(0, 3) += 0.05;
+        else if (ev.key == FW_KEY_UP)
+            this->object_transformation_matrix_(1, 3) += 0.05;
+        else if (ev.key == FW_KEY_DOWN)
+            this->object_transformation_matrix_(1, 3) -= 0.05;
         else if (ev.key == FW_KEY_A) {
             this->object_rotation_angle_ += 0.05 * FW_PI;
             this->update_rotation();
@@ -278,7 +301,11 @@ bool App::handleEvent(const Window::Event &ev) {
             float prev_scale{this->object_x_scale_};
             this->object_x_scale_ -= 0.05;
             this->update_scale(prev_scale);
-        } else if (ev.key == FW_KEY_WHEEL_UP) { this->camera_translation_ += 0.1; } else if (ev.key == FW_KEY_WHEEL_DOWN) { this->camera_translation_ -= 0.1; } else if (ev.key == FW_KEY_R) {
+        } else if (ev.key == FW_KEY_WHEEL_UP) {
+            this->camera_z_translation_ += 0.1;
+        } else if (ev.key == FW_KEY_WHEEL_DOWN) {
+            this->camera_z_translation_ -= 0.1;
+        } else if (ev.key == FW_KEY_R) {
             if (this->animating_) {
                 this->animating_ = false;
                 this->timer_.end();
@@ -287,7 +314,11 @@ bool App::handleEvent(const Window::Event &ev) {
                 this->timer_.start();
             }
             this->prev_time_ = 0.0;
-        } else if (ev.key == FW_KEY_Z) { this->fov_ += 0.05 * FW_PI; } else if (ev.key == FW_KEY_C) { this->fov_ -= 0.05 * FW_PI; }
+        } else if (ev.key == FW_KEY_Z) {
+            this->fov_ += 0.05 * FW_PI;
+        } else if (ev.key == FW_KEY_C) {
+            this->fov_ -= 0.05 * FW_PI;
+        }
     }
 
     if (ev.type == Window::EventType_KeyUp) {}
@@ -394,25 +425,25 @@ void App::initRendering() {
             const vec3 directionToLight = normalize(vec3(0.5, 0.5, -0.6));
 
             void main() {
-            // EXTRA: oops, someone forgot to transform normals here...
+                // EXTRA: oops, someone forgot to transform normals here...
 
-            // Note: Do not use uWorldToClip here!
-            // vec3 fixedNormal = normalize((transpose(inverse(uModelToWorld)) * vec4(aNormal, 1.0)).xyz);
-            vec3 fixedNormal = normalize((aNormalTransformation * vec4(aNormal, 1.0)).xyz);
+                // Note: Do not use uWorldToClip here!
+                // vec3 fixedNormal = normalize((transpose(inverse(uModelToWorld)) * vec4(aNormal, 1.0)).xyz);
+                vec3 fixedNormal = normalize((aNormalTransformation * vec4(aNormal, 1.0)).xyz);
 
-            float clampedCosine = clamp(dot(fixedNormal, directionToLight), 0.0, 1.0);
-            vec3 litColor = vec3(clampedCosine);
-            vec3 generatedColor = distinctColors[gl_VertexID % 6];
-            // gl_Position is a built-in output variable that marks the final position
-            // of the vertex in clip space. Vertex shaders must write in it.
-            gl_Position = uWorldToClip * uModelToWorld * aPosition;
-            vColor = vec4(mix(generatedColor, litColor, uShading), 1);
+                float clampedCosine = clamp(dot(fixedNormal, directionToLight), 0.0, 1.0);
+                vec3 litColor = vec3(clampedCosine);
+                vec3 generatedColor = distinctColors[gl_VertexID % 6];
+                // gl_Position is a built-in output variable that marks the final position
+                // of the vertex in clip space. Vertex shaders must write in it.
+                gl_Position = uWorldToClip * uModelToWorld * aPosition;
+                vColor = vec4(mix(generatedColor, litColor, uShading), 1);
             }),
         "#version 330\n" FW_GL_SHADER_SOURCE(
             in vec4 vColor;
             out vec4 fColor;
             void main() {
-            fColor = vColor;
+                fColor = vColor;
             }));
     // Tell the FW about the program so it gets properly destroyed at exit.
     ctx->setProgram("shaders", shader_program);
@@ -449,7 +480,7 @@ void App::render() {
     C.setCol(0, Vec4f(rot.getCol(0), 0));
     C.setCol(1, Vec4f(rot.getCol(1), 0));
     C.setCol(2, Vec4f(rot.getCol(2), 0));
-    C.setCol(3, Vec4f(0, 0, camera_distance + this->camera_translation_, 1));
+    C.setCol(3, Vec4f(0, 0, camera_distance + this->camera_z_translation_, 1));
 
     // Simple perspective.
     static const float fnear = 0.1f, ffar = 4.0f;
@@ -507,7 +538,7 @@ void App::render() {
                          "camerainfo");
 }
 
-vector<Vertex> App::loadPLYFileModel(string filename) {
+vector<Vertex> App::loadPLYFileModel(string filename, bool simplify) {
     // http://paulbourke.net/dataformats/ply/
     // We assume that the input mesh is a pure triangle mesh.
 
@@ -553,7 +584,11 @@ vector<Vertex> App::loadPLYFileModel(string filename) {
             }
             if (s == "element") {
                 iss >> s;
-                if (s == "vertex") { iss >> vertex_count; } else if (s == "face") { iss >> face_count; }
+                if (s == "vertex") {
+                    iss >> vertex_count;
+                } else if (s == "face") {
+                    iss >> face_count;
+                }
             }
             if (s == "end_header") { state = 1; }
             continue;
@@ -562,7 +597,11 @@ vector<Vertex> App::loadPLYFileModel(string filename) {
         // Read line contents.
         while (true) {
             if (s == "{") { break; }
-            if ((loc + 1) > items.size()) { items.push_back(s); } else { items[loc] = s; }
+            if ((loc + 1) > items.size()) {
+                items.push_back(s);
+            } else {
+                items[loc] = s;
+            }
             loc++;
             if (iss.eof()) { break; }
             iss >> s;
@@ -591,10 +630,12 @@ vector<Vertex> App::loadPLYFileModel(string filename) {
         }
     }
 
-    auto res = this->simplifyMesh(positions, temp_faces);
-    positions = get<0>(res);
-    normals = get<1>(res);
-    faces = get<2>(res);
+    if (simplify) {
+        auto res = this->simplifyMesh(positions, temp_faces);
+        positions = get<0>(res);
+        normals = get<1>(res);
+        faces = get<2>(res);
+    }
 
 
     if (failed) { common_ctrl_.message("Only ascii PLY format supported"); }
@@ -665,7 +706,9 @@ tuple<std::vector<Vec3f>, std::vector<Vec3f>, std::vector<std::array<unsigned, 6
         for (const auto &face_index : vertex_to_faces[vertex_counter]) {
             std::vector<unsigned> neighbors;
             auto face_vertices = faces[face_index];
-            for (size_t i = 0; i < 3; i++) { if (face_vertices[i] != v0_index) { neighbors.push_back(face_vertices[i]); } }
+            for (size_t i = 0; i < 3; i++) {
+                if (face_vertices[i] != v0_index) { neighbors.push_back(face_vertices[i]); }
+            }
             // C++ 17
             // auto [v1_index, v2_index] = neighbors;
             auto v1_index = neighbors[0], v2_index = neighbors[1];
@@ -821,7 +864,8 @@ vector<Vertex> App::loadObjFileModel(string filename) {
     while (getline(input, line)) {
         // Replace any '/' characters with spaces ' ' so that all of the
         // values we wish to read are separated with whitespace.
-        for (auto &c : line) if (c == '/') c = ' ';
+        for (auto &c : line)
+            if (c == '/') c = ' ';
 
         // Temporary objects to read data into.
         array<unsigned, 6> f; // Face index array

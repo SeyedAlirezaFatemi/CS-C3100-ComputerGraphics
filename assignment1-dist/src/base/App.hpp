@@ -49,7 +49,7 @@ namespace FW {
         std::vector<Vertex> loadObjFileModel(std::string filename);
 
         // EXTRA
-        std::vector<Vertex> loadPLYFileModel(std::string filename);
+        std::vector<Vertex> loadPLYFileModel(std::string filename, bool simplify);
         // EXTRA: Mesh Simplification
         std::tuple<std::vector<Vec3f>, std::vector<Vec3f>, std::vector<std::array<unsigned, 6>>> simplifyMesh(std::vector<Vec3f> positions, std::vector<std::array<unsigned, 3>> faces);
 
@@ -79,7 +79,7 @@ namespace FW {
         float object_rotation_angle_;
         float object_x_scale_;
 
-        float camera_translation_;
+        float camera_z_translation_;
         float camera_x_rotation_angle_; // Rotation around the x axis
 
         // EXTRA:
