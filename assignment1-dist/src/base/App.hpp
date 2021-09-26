@@ -4,9 +4,11 @@
 #include "gui/Window.hpp"
 
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace FW {
+    using Quadric = Mat4f;
 
     struct Vertex {
         Vec3f position;
@@ -26,14 +28,15 @@ namespace FW {
             MODEL_EXAMPLE,
             MODEL_USER_GENERATED,
             MODEL_FROM_INDEXED_DATA,
-            MODEL_FROM_FILE
+            MODEL_FROM_FILE,
+            SIMPLIFIED_MODEL_FROM_FILE,
         };
 
     public:
-        App();            // constructor
-        virtual ~App() {} // destructor
+        App();             // constructor
+        ~App() override {} // destructor
 
-        virtual bool handleEvent(const Window::Event &ev);
+        bool handleEvent(const Window::Event &ev) override;
 
     private:
         App(const App &);            // forbid copy
@@ -47,6 +50,8 @@ namespace FW {
 
         // EXTRA
         std::vector<Vertex> loadPLYFileModel(std::string filename);
+        // EXTRA: Mesh Simplification
+        std::tuple<std::vector<Vec3f>, std::vector<Vec3f>, std::vector<std::array<unsigned, 6>>> simplifyMesh(std::vector<Vec3f> positions, std::vector<std::array<unsigned, 3>> faces);
 
         void streamGeometry(const std::vector<Vertex> &vertices);
 

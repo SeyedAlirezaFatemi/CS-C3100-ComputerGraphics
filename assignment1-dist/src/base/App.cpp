@@ -5,15 +5,20 @@
 #include "base/Main.hpp"
 #include "gpu/Buffer.hpp"
 #include "gpu/GLContext.hpp"
+#include "updatable_priority_queue.h"
 #include "utility.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <set>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <type_traits>
 
 using namespace FW;
@@ -43,8 +48,7 @@ namespace {
             {Vec3f(-0.5f, -0.5f, 0), Vec3f(0.0f, 0.0f, -1.0f)},
             {Vec3f(0.5f, -0.5f, 0), Vec3f(0.0f, 0.0f, -1.0f)}};
         vector<Vertex> vertices;
-        for (auto v : example_data)
-            vertices.push_back(v);
+        for (auto v : example_data) vertices.push_back(v);
         return vertices;
     }
 
@@ -149,7 +153,7 @@ namespace {
             v1.position.z = FW::sin(previous_angle) * radius;
             v2.position.x = FW::cos(current_angle) * radius;
             v2.position.z = FW::sin(current_angle) * radius;
-            v0.normal = v1.normal = v2.normal = FW::normalize(FW::cross(v0.position - v1.position, v0.position - v2.position));
+            v0.normal = v1.normal = v2.normal = normalize(cross(v0.position - v1.position, v0.position - v2.position));
             // Then we add the vertices to the array.
             // .push_back() grows the size of the vector by one, copies its argument,
             // and places the copy at the back of the vector.
@@ -173,10 +177,10 @@ App::App(void)
       object_x_scale_(1.0f),
       camera_translation_(0.0f),
       camera_x_rotation_angle_(0.0f),
-      animating_(false),
       prev_time_(0.0f),
+      animating_(false),
       fov_(FW_PI / 2.0) {
-    static_assert(is_standard_layout<Vertex>::value, "struct Vertex must be standard layout to use offsetof");
+    static_assert(is_standard_layout_v<Vertex>, "struct Vertex must be standard layout to use offsetof");
     initRendering();
 
     common_ctrl_.showFPS(true);
@@ -226,12 +230,7 @@ bool App::handleEvent(const Window::Event &ev) {
                 auto filename = window_.showFileLoadDialog("Load new mesh");
                 if (filename.getLength()) {
                     auto ext = filename.substring(filename.lastIndexOf(".") + 1).toLower();
-                    if (ext == "ply") {
-                        streamGeometry(loadPLYFileModel(filename.getPtr()));
-                    } else if (ext == "obj") {
-                        cout << "obj";
-                        streamGeometry(loadObjFileModel(filename.getPtr()));
-                    } else {
+                    if (ext == "ply") { streamGeometry(loadPLYFileModel(filename.getPtr())); } else if (ext == "obj") { streamGeometry(loadObjFileModel(filename.getPtr())); } else {
                         current_model_ = MODEL_EXAMPLE;
                         model_changed_ = true;
                     }
@@ -239,7 +238,10 @@ bool App::handleEvent(const Window::Event &ev) {
                     current_model_ = MODEL_EXAMPLE;
                     model_changed_ = true;
                 }
-            } break;
+            }
+            break;
+            case SIMPLIFIED_MODEL_FROM_FILE: { }
+            break;
             default:
                 assert(false && "invalid model type");
         }
@@ -256,18 +258,12 @@ bool App::handleEvent(const Window::Event &ev) {
         // Look in framework/gui/Keys.hpp for more key codes.
         // Visual Studio tip: you can right-click an identifier like FW_KEY_HOME
         // and "Go to definition" to jump directly to where the identifier is defined.
-        if (ev.key == FW_KEY_HOME)
-            camera_rotation_angle_ -= 0.05 * FW_PI;
-        else if (ev.key == FW_KEY_END)
-            camera_rotation_angle_ += 0.05 * FW_PI;
-        else if (ev.key == FW_KEY_LEFT)
-            this->object_transformation_matrix_(0, 3) -= 0.05;
-        else if (ev.key == FW_KEY_RIGHT)
-            this->object_transformation_matrix_(0, 3) += 0.05;
-        else if (ev.key == FW_KEY_UP)
-            this->object_transformation_matrix_(1, 3) += 0.05;
-        else if (ev.key == FW_KEY_DOWN)
-            this->object_transformation_matrix_(1, 3) -= 0.05;
+        if (ev.key == FW_KEY_HOME) camera_rotation_angle_ -= 0.05 * FW_PI;
+        else if (ev.key == FW_KEY_END) camera_rotation_angle_ += 0.05 * FW_PI;
+        else if (ev.key == FW_KEY_LEFT) this->object_transformation_matrix_(0, 3) -= 0.05;
+        else if (ev.key == FW_KEY_RIGHT) this->object_transformation_matrix_(0, 3) += 0.05;
+        else if (ev.key == FW_KEY_UP) this->object_transformation_matrix_(1, 3) += 0.05;
+        else if (ev.key == FW_KEY_DOWN) this->object_transformation_matrix_(1, 3) -= 0.05;
         else if (ev.key == FW_KEY_A) {
             this->object_rotation_angle_ += 0.05 * FW_PI;
             this->update_rotation();
@@ -282,11 +278,7 @@ bool App::handleEvent(const Window::Event &ev) {
             float prev_scale{this->object_x_scale_};
             this->object_x_scale_ -= 0.05;
             this->update_scale(prev_scale);
-        } else if (ev.key == FW_KEY_WHEEL_UP) {
-            this->camera_translation_ += 0.1;
-        } else if (ev.key == FW_KEY_WHEEL_DOWN) {
-            this->camera_translation_ -= 0.1;
-        } else if (ev.key == FW_KEY_R) {
+        } else if (ev.key == FW_KEY_WHEEL_UP) { this->camera_translation_ += 0.1; } else if (ev.key == FW_KEY_WHEEL_DOWN) { this->camera_translation_ -= 0.1; } else if (ev.key == FW_KEY_R) {
             if (this->animating_) {
                 this->animating_ = false;
                 this->timer_.end();
@@ -295,15 +287,10 @@ bool App::handleEvent(const Window::Event &ev) {
                 this->timer_.start();
             }
             this->prev_time_ = 0.0;
-        } else if (ev.key == FW_KEY_Z) {
-            this->fov_ += 0.05 * FW_PI;
-        } else if (ev.key == FW_KEY_C) {
-            this->fov_ -= 0.05 * FW_PI;
-        }
+        } else if (ev.key == FW_KEY_Z) { this->fov_ += 0.05 * FW_PI; } else if (ev.key == FW_KEY_C) { this->fov_ -= 0.05 * FW_PI; }
     }
 
-    if (ev.type == Window::EventType_KeyUp) {
-    }
+    if (ev.type == Window::EventType_KeyUp) {}
 
     if (ev.type == Window::EventType_Mouse) {
         // EXTRA: you can put your mouse controls here.
@@ -324,17 +311,14 @@ bool App::handleEvent(const Window::Event &ev) {
     }
 
     window_.setVisible(true);
-    if (ev.type == Window::EventType_Paint)
-        render();
+    if (ev.type == Window::EventType_Paint) render();
 
     window_.repaint();
 
     return false;
 }
 
-void App::update_scale(float prev_scale) {
-    this->object_transformation_matrix_(0, 0) = this->object_transformation_matrix_(0, 0) / prev_scale * this->object_x_scale_;
-}
+void App::update_scale(float prev_scale) { this->object_transformation_matrix_(0, 0) = this->object_transformation_matrix_(0, 0) / prev_scale * this->object_x_scale_; }
 
 void App::update_rotation() {
     Mat3f rot = Mat3f::rotation(Vec3f(0, 1, 0), -this->object_rotation_angle_);
@@ -368,7 +352,7 @@ void App::initRendering() {
     glBindVertexArray(gl_.static_vao);
     glBindBuffer(GL_ARRAY_BUFFER, gl_.static_vertex_buffer);
     glEnableVertexAttribArray(ATTRIB_POSITION);
-    glVertexAttribPointer(ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *) 0);
+    glVertexAttribPointer(ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), nullptr);
     glEnableVertexAttribArray(ATTRIB_NORMAL);
     glVertexAttribPointer(ATTRIB_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *) offsetof(Vertex, normal));
 
@@ -379,7 +363,7 @@ void App::initRendering() {
     glBindVertexArray(gl_.dynamic_vao);
     glBindBuffer(GL_ARRAY_BUFFER, gl_.dynamic_vertex_buffer);
     glEnableVertexAttribArray(ATTRIB_POSITION);
-    glVertexAttribPointer(ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *) 0);
+    glVertexAttribPointer(ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), nullptr);
     glEnableVertexAttribArray(ATTRIB_NORMAL);
     glVertexAttribPointer(ATTRIB_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *) offsetof(Vertex, normal));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -410,25 +394,25 @@ void App::initRendering() {
             const vec3 directionToLight = normalize(vec3(0.5, 0.5, -0.6));
 
             void main() {
-                // EXTRA: oops, someone forgot to transform normals here...
+            // EXTRA: oops, someone forgot to transform normals here...
 
-                // Note: Do not use uWorldToClip here!
-                // vec3 fixedNormal = normalize((transpose(inverse(uModelToWorld)) * vec4(aNormal, 1.0)).xyz);
-                vec3 fixedNormal = normalize((aNormalTransformation * vec4(aNormal, 1.0)).xyz);
+            // Note: Do not use uWorldToClip here!
+            // vec3 fixedNormal = normalize((transpose(inverse(uModelToWorld)) * vec4(aNormal, 1.0)).xyz);
+            vec3 fixedNormal = normalize((aNormalTransformation * vec4(aNormal, 1.0)).xyz);
 
-                float clampedCosine = clamp(dot(fixedNormal, directionToLight), 0.0, 1.0);
-                vec3 litColor = vec3(clampedCosine);
-                vec3 generatedColor = distinctColors[gl_VertexID % 6];
-                // gl_Position is a built-in output variable that marks the final position
-                // of the vertex in clip space. Vertex shaders must write in it.
-                gl_Position = uWorldToClip * uModelToWorld * aPosition;
-                vColor = vec4(mix(generatedColor, litColor, uShading), 1);
+            float clampedCosine = clamp(dot(fixedNormal, directionToLight), 0.0, 1.0);
+            vec3 litColor = vec3(clampedCosine);
+            vec3 generatedColor = distinctColors[gl_VertexID % 6];
+            // gl_Position is a built-in output variable that marks the final position
+            // of the vertex in clip space. Vertex shaders must write in it.
+            gl_Position = uWorldToClip * uModelToWorld * aPosition;
+            vColor = vec4(mix(generatedColor, litColor, uShading), 1);
             }),
         "#version 330\n" FW_GL_SHADER_SOURCE(
             in vec4 vColor;
             out vec4 fColor;
             void main() {
-                fColor = vColor;
+            fColor = vColor;
             }));
     // Tell the FW about the program so it gets properly destroyed at exit.
     ctx->setProgram("shaders", shader_program);
@@ -447,7 +431,7 @@ void App::render() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Extra: Easy viewport correction
-    FW::Vec2i window_size = this->window_.getSize();
+    Vec2i window_size = this->window_.getSize();
     // int size = FW::min(window_size);
     // glViewport((window_size[0] - size) / 2, (window_size[1] - size) / 2, size, size);
 
@@ -473,7 +457,7 @@ void App::render() {
     // Resources:
     // https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/building-basic-perspective-projection-matrix
     // http://learnwebgl.brown37.net/08_projections/projections_perspective.html
-    float s = 1.0 / FW::tan(this->fov_ / 2.0);
+    float s = 1.0 / tan(this->fov_ / 2.0);
     float aspect = (window_size[0] * 1.0) / (window_size[1] * 1.0);
     P.setCol(0, Vec4f(s, 0, 0, 0));
     P.setCol(1, Vec4f(0, s * aspect, 0, 0));
@@ -501,12 +485,12 @@ void App::render() {
 
     // Draw the model with your model-to-world transformation.
     // Note: Do not use world_to_clip here!
-    Mat4f normal_transformation = FW::invert(FW::transpose(this->object_transformation_matrix_));
+    Mat4f normal_transformation = invert(transpose(this->object_transformation_matrix_));
     glUniformMatrix4fv(gl_.normal_transformation_uniform, 1, GL_FALSE, normal_transformation.getPtr());
 
     glUniformMatrix4fv(gl_.model_to_world_uniform, 1, GL_FALSE, modelToWorld.getPtr());
     glBindVertexArray(gl_.dynamic_vao);
-    glDrawArrays(GL_TRIANGLES, 0, (GLsizei) vertex_count_);
+    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertex_count_));
 
     // Undo our bindings.
     glBindVertexArray(0);
@@ -518,8 +502,8 @@ void App::render() {
     // Show status messages. You may find it useful to show some debug information in a message.
     common_ctrl_.message(sprintf("Use Home/End to rotate camera. Use A/D to rotate object. Use Q/E to scale object.\nUse Z/C to change FOV."), "instructions");
     common_ctrl_.message(sprintf("Camera is at (%.2f %.2f %.2f) looking towards origin.",
-                                 -FW::sin(camera_rotation_angle_) * camera_distance, 0.0f,
-                                 -FW::cos(camera_rotation_angle_) * camera_distance),
+                                 -sin(camera_rotation_angle_) * camera_distance, 0.0f,
+                                 -cos(camera_rotation_angle_) * camera_distance),
                          "camerainfo");
 }
 
@@ -531,6 +515,7 @@ vector<Vertex> App::loadPLYFileModel(string filename) {
 
     vector<Vec3f> positions, normals;
     vector<array<unsigned, 6>> faces;
+    vector<array<unsigned, 3>> temp_faces;
 
     // Open input file stream for reading.
     ifstream input(filename, ios::in);
@@ -548,7 +533,8 @@ vector<Vertex> App::loadPLYFileModel(string filename) {
     Vec3f v;
     string s;
     std::vector<std::string> items(3);
-    array<unsigned, 6> f; // Face index array
+    array<unsigned, 6> f;      // Face index array
+    array<unsigned, 3> temp_f; // Face index array
 
     while (getline(input, line)) {
         // Create a stream from the string to pick out one value at a time.
@@ -567,39 +553,23 @@ vector<Vertex> App::loadPLYFileModel(string filename) {
             }
             if (s == "element") {
                 iss >> s;
-                if (s == "vertex") {
-                    iss >> vertex_count;
-                } else if (s == "face") {
-                    iss >> face_count;
-                }
+                if (s == "vertex") { iss >> vertex_count; } else if (s == "face") { iss >> face_count; }
             }
-            if (s == "end_header") {
-                state = 1;
-            }
+            if (s == "end_header") { state = 1; }
             continue;
         }
         int loc = 0;
         // Read line contents.
         while (true) {
-            if (s == "{") {
-                break;
-            }
-            if ((loc + 1) > items.size()) {
-                items.push_back(s);
-            } else {
-                items[loc] = s;
-            }
+            if (s == "{") { break; }
+            if ((loc + 1) > items.size()) { items.push_back(s); } else { items[loc] = s; }
             loc++;
-            if (iss.eof()) {
-                break;
-            }
+            if (iss.eof()) { break; }
             iss >> s;
         }
         // Put line contents into appropriate vertex or face.
         if (state == 1) {
-            for (size_t i = 0; i < 3; i++) {
-                v[i] = std::stof(items[i]);
-            }
+            for (size_t i = 0; i < 3; i++) { v[i] = std::stof(items[i]); }
             positions.push_back(v);
             counter++;
             if (counter == vertex_count) {
@@ -610,23 +580,231 @@ vector<Vertex> App::loadPLYFileModel(string filename) {
             // Ignore the first item
             for (size_t i = 1; i < 4; i++) {
                 f[2 * (i - 1)] = std::stoi(items[i]);
+                temp_f[i - 1] = std::stoi(items[i]);
                 f[2 * (i - 1) + 1] = counter;
             }
             faces.push_back(f);
-            normals.push_back(FW::normalize(FW::cross(positions[f[0]] - positions[f[2]], positions[f[0]] - positions[f[4]])));
+            temp_faces.push_back(temp_f);
+            normals.push_back(normalize(cross(positions[f[0]] - positions[f[2]], positions[f[0]] - positions[f[4]])));
             counter++;
-            if (counter == face_count) {
-                break;
-            }
+            if (counter == face_count) { break; }
         }
     }
 
-    if (failed) {
-        common_ctrl_.message("Only ascii PLY format supported");
-    }
+    auto res = this->simplifyMesh(positions, temp_faces);
+    positions = get<0>(res);
+    normals = get<1>(res);
+    faces = get<2>(res);
+
+
+    if (failed) { common_ctrl_.message("Only ascii PLY format supported"); }
 
     common_ctrl_.message(("Loaded mesh from " + filename).c_str());
     return unpackIndexedData(positions, normals, faces);
+}
+
+std::tuple<unsigned, unsigned> get_edge_key(unsigned first_vertex_index, unsigned second_vertex_index) { return std::make_tuple(std::min(first_vertex_index, second_vertex_index), std::max(first_vertex_index, second_vertex_index)); }
+
+std::tuple<float, Vec4f> calculate_cost_and_optimal_point(Quadric quadric) {
+    auto modified_quadric(quadric);
+    // Set last row
+    modified_quadric(3, 0) = 0.0;
+    modified_quadric(3, 1) = 0.0;
+    modified_quadric(3, 2) = 0.0;
+    modified_quadric(3, 3) = 1.0;
+
+    auto optimal_point = invert(modified_quadric) * Vec4f(0.0, 0.0, 0.0, 1.0);
+    // Oh GOD! Why can't I transpose a vector? I hate FW!
+    // auto cost = FW::transpose(optimal_point) * quadric * optimal_point;
+    auto cost = quadric(0, 0) * (optimal_point.x * optimal_point.x) +
+                2 * quadric(0, 1) * (optimal_point.x * optimal_point.y) +
+                2 * quadric(0, 2) * (optimal_point.x * optimal_point.z) +
+                2 * quadric(0, 3) * optimal_point.x +
+                quadric(1, 1) * (optimal_point.y * optimal_point.y) +
+                2 * quadric(1, 2) * (optimal_point.y * optimal_point.z) +
+                2 * quadric(1, 3) * optimal_point.y +
+                quadric(2, 2) * (optimal_point.z * optimal_point.z) +
+                2 * quadric(2, 3) * optimal_point.z +
+                quadric(3, 3);
+    return std::make_tuple(cost, optimal_point);
+}
+
+
+tuple<std::vector<Vec3f>, std::vector<Vec3f>, std::vector<std::array<unsigned, 6>>> App::simplifyMesh(std::vector<Vec3f> positions, std::vector<std::array<unsigned, 3>> faces) {
+    // Note: We should check some conditions before and after an edge collapse. We don't do that here! This is a very basic implementation that works really nice!
+    std::vector<Quadric> quadrics;
+    quadrics.reserve(positions.size());
+    // This would be simplified if I had a halfedge data structure.
+    std::map<unsigned, std::tuple<unsigned, unsigned>> edge_index_to_key;
+    std::map<std::tuple<unsigned, unsigned>, unsigned> edge_key_to_index;
+    std::vector<Vec4f> optimal_points;
+    std::map<unsigned, std::vector<unsigned>> vertex_to_faces;
+    std::map<unsigned, std::vector<unsigned>> edge_to_faces;
+    std::set<unsigned> dead_faces;
+    std::set<unsigned> dead_vertices;
+    unsigned face_counter = 0;
+    unsigned edge_counter = 0;
+    for (const auto &face_vertices : faces) {
+        for (size_t i = 0; i < 3; i++) {
+            vertex_to_faces[face_vertices[i]].push_back(face_counter);
+            auto edge_key = get_edge_key(face_vertices[i], face_vertices[(i + 1) % 3]);
+            if (!edge_key_to_index.count(edge_key)) {
+                // New edge
+                edge_index_to_key[edge_counter] = edge_key;
+                edge_key_to_index[edge_key] = edge_counter;
+                edge_counter++;
+            }
+            edge_to_faces[edge_key_to_index[edge_key]].push_back(face_counter);
+        }
+        face_counter++;
+    }
+    unsigned vertex_counter = 0;
+    for (const auto &vertex_position : positions) {
+        Quadric vertex_quadric;
+        unsigned v0_index = vertex_counter;
+        for (const auto &face_index : vertex_to_faces[vertex_counter]) {
+            std::vector<unsigned> neighbors;
+            auto face_vertices = faces[face_index];
+            for (size_t i = 0; i < 3; i++) { if (face_vertices[i] != v0_index) { neighbors.push_back(face_vertices[i]); } }
+            // C++ 17
+            // auto [v1_index, v2_index] = neighbors;
+            auto v1_index = neighbors[0], v2_index = neighbors[1];
+            const auto &p0 = positions[v0_index], &p1 = positions[v1_index], &p2 = positions[v2_index];
+            // These two vectors are in the plane
+            auto v1 = p2 - p0;
+            auto v2 = p1 - p0;
+            // The cross product is a vector normal to the plane
+            auto normal = normalize(cross(v1, v2));
+            auto a = normal[0], b = normal[1], c = normal[2];
+            // This evaluates a * x3 + b * y3 + c * z3 which equals -d
+            auto d = -dot(normal, p2);
+            // Vec4f face_equation{a, b, c, d};
+            Quadric fundamental_error_quadric;
+            fundamental_error_quadric.setRow(0, Vec4f(a * a, a * b, a * c, a * d));
+            fundamental_error_quadric.setRow(1, Vec4f(a * b, b * b, b * c, b * d));
+            fundamental_error_quadric.setRow(2, Vec4f(a * c, b * c, c * c, c * d));
+            fundamental_error_quadric.setRow(3, Vec4f(a * d, b * d, c * d, d * d));
+            vertex_quadric += fundamental_error_quadric;
+        }
+        quadrics.push_back(vertex_quadric);
+        vertex_counter++;
+    }
+
+    // Compute costs and add the edges to the priority queue.
+    // This is an updatable priority queue.
+    better_priority_queue::updatable_priority_queue<unsigned, float> pq;
+    for (const auto &item : edge_index_to_key) {
+        auto edge_index = item.first;
+        auto edge_vertices = item.second;
+        auto quadric = quadrics[get<0>(edge_vertices)] + quadrics[get<1>(edge_vertices)];
+        auto res = calculate_cost_and_optimal_point(quadric);
+        auto cost = get<0>(res);
+        auto optimal_point = get<1>(res);
+        optimal_points.push_back(optimal_point);
+        pq.push(edge_index, -cost);
+    }
+
+    int face_count = faces.size();
+    // Set this yourself!
+    int target_face_count = std::max(face_count - 100, 100);
+    while (face_count > target_face_count) {
+        if (pq.empty()) { break; }
+        auto popped = pq.pop_value();
+        // Edge to be collapsed.
+        auto edge_index = popped.key;
+        auto optimal_point = optimal_points[edge_index];
+        auto edge_key = edge_index_to_key[edge_index];
+        auto first_vertex_index = get<0>(edge_key);
+        auto second_vertex_index = get<1>(edge_key);
+        auto faces_indices = edge_to_faces[edge_index];
+        // Check if edge already removed.
+        bool corrupted = false;
+        for (const auto &item : faces_indices) {
+            if (dead_faces.count(item)) {
+                corrupted = true;
+                break;
+            }
+        }
+        if (corrupted || dead_vertices.count(first_vertex_index) || dead_vertices.count(second_vertex_index)) { continue; }
+        // Move the first vertex to the optimal_point.
+        positions[first_vertex_index] = optimal_point.getXYZ();
+        // Update the quadric of the first vertex.
+        quadrics[first_vertex_index] += quadrics[second_vertex_index];
+
+        // Eliminate faces adjacent to the edge.
+        for (const auto &item : faces_indices) { dead_faces.insert(item); }
+        // Eliminate the second vertex. We keep the first vertex.
+        dead_vertices.insert(second_vertex_index);
+        // Update stuff used to move around the mesh.
+        for (const auto &face_index : vertex_to_faces[second_vertex_index]) {
+            // If face is dead, don't bother. The newly deleted faces are also in the dead_faces.
+            if (dead_faces.count(face_index)) { continue; }
+            // Replace the second vertex by the first one.
+            int found_index;
+            for (int i = 0; i < 3; i++) {
+                if (faces[face_index][i] == second_vertex_index) {
+                    found_index = i;
+                    break;
+                }
+            }
+            // Update edges that were connected to the second vertex.
+            auto edge_key = get_edge_key(second_vertex_index, faces[face_index][(found_index + 1) % 3]);
+            edge_index_to_key[edge_key_to_index[edge_key]] = get_edge_key(first_vertex_index, faces[face_index][(found_index + 1) % 3]);
+            edge_key_to_index[get_edge_key(first_vertex_index, faces[face_index][(found_index + 1) % 3])] = edge_key_to_index[edge_key];
+            edge_key = get_edge_key(faces[face_index][(found_index + 2) % 3], second_vertex_index);
+            edge_index_to_key[edge_key_to_index[edge_key]] = get_edge_key(faces[face_index][(found_index + 2) % 3], first_vertex_index);
+            edge_key_to_index[get_edge_key(faces[face_index][(found_index + 2) % 3], first_vertex_index)] = edge_key_to_index[edge_key];
+
+            // Update faces that were connected to the second vertex.
+            faces[face_index][found_index] = first_vertex_index;
+            // Update vertex_face_map for the first vertex.
+            vertex_to_faces[first_vertex_index].push_back(face_index);
+        }
+        face_count -= 2;
+
+        for (const auto &face_index : vertex_to_faces[first_vertex_index]) {
+            // If face is dead, don't bother.
+            if (dead_faces.count(face_index)) { continue; }
+            for (size_t i = 0; i < 3; i++) {
+                auto edge_key = get_edge_key(faces[face_index][i], faces[face_index][(i + 1) % 3]);
+                auto edge_index = edge_key_to_index[edge_key];
+                auto quadric = quadrics[get<0>(edge_key)] + quadrics[get<1>(edge_key)];
+                auto res = calculate_cost_and_optimal_point(quadric);
+                auto cost = get<0>(res);
+                auto optimal_point = get<1>(res);
+                optimal_points[edge_index] = optimal_point;
+                pq.update(edge_index, -cost);
+            }
+        }
+    }
+    // Deletion phase done.
+    // Wrap things up and send them back!
+    std::map<unsigned, unsigned> old_to_new;
+    std::vector<Vec3f> new_positions, new_normals;
+    std::vector<std::array<unsigned, 6>> new_faces;
+    vertex_counter = 0;
+    for (size_t i = 0; i < positions.size(); i++) {
+        if (dead_vertices.count(i)) { continue; }
+        old_to_new[i] = vertex_counter;
+        new_positions.push_back(positions[i]);
+        vertex_counter++;
+    }
+    std::array<unsigned, 3> new_face_vertices;
+    std::array<unsigned, 6> new_face_item;
+    for (size_t face_index = 0; face_index < faces.size(); face_index++) {
+        if (dead_faces.count(face_index)) { continue; }
+        for (size_t j = 0; j < 3; j++) { new_face_vertices[j] = old_to_new[faces[face_index][j]]; }
+        auto normal = normalize(cross(new_positions[new_face_vertices[0]] - positions[new_face_vertices[1]], positions[new_face_vertices[0]] - positions[new_face_vertices[2]]));
+        new_normals.push_back(normal);
+        new_face_item[0] = new_face_vertices[0];
+        new_face_item[2] = new_face_vertices[1];
+        new_face_item[4] = new_face_vertices[2];
+        new_face_item[1] = new_normals.size() - 1;
+        new_face_item[3] = new_normals.size() - 1;
+        new_face_item[5] = new_normals.size() - 1;
+        new_faces.push_back(new_face_item);
+    }
+    return make_tuple(new_positions, new_normals, new_faces);
 }
 
 vector<Vertex> App::loadObjFileModel(string filename) {
@@ -643,9 +821,7 @@ vector<Vertex> App::loadObjFileModel(string filename) {
     while (getline(input, line)) {
         // Replace any '/' characters with spaces ' ' so that all of the
         // values we wish to read are separated with whitespace.
-        for (auto &c : line)
-            if (c == '/')
-                c = ' ';
+        for (auto &c : line) if (c == '/') c = ' ';
 
         // Temporary objects to read data into.
         array<unsigned, 6> f; // Face index array
@@ -659,19 +835,22 @@ vector<Vertex> App::loadObjFileModel(string filename) {
         // It identifies the type of object (vertex or normal or ...)
         iss >> s;
 
-        if (s == "v") { // vertex position
+        if (s == "v") {
+            // vertex position
             // YOUR CODE HERE (R4)
             // Read the three vertex coordinates (x, y, z) into 'v'.
             // Store a copy of 'v' in 'positions'.
             // See std::vector documentation for push_back.
             iss >> v.x >> v.y >> v.z;
             positions.push_back(v);
-        } else if (s == "vn") { // normal
+        } else if (s == "vn") {
+            // normal
             // YOUR CODE HERE (R4)
             // Similar to above.
             iss >> v.x >> v.y >> v.z;
             normals.push_back(v);
-        } else if (s == "f") { // face
+        } else if (s == "f") {
+            // face
             // YOUR CODE HERE (R4)
             // Read the indices representing a face and store it in 'faces'.
             // The data in the file is in the format
@@ -689,9 +868,7 @@ vector<Vertex> App::loadObjFileModel(string filename) {
                 iss >> sink;
                 iss >> f[2 * i + 1];
             }
-            for (size_t i = 0; i < 6; i++) {
-                f[i] -= 1;
-            }
+            for (size_t i = 0; i < 6; i++) { f[i] -= 1; }
 
             faces.push_back(f);
             // Note that in C++ we index things starting from 0, but face indices in OBJ format start from 1.
@@ -705,6 +882,4 @@ vector<Vertex> App::loadObjFileModel(string filename) {
     return unpackIndexedData(positions, normals, faces);
 }
 
-void FW::init(void) {
-    new App;
-}
+void FW::init(void) { new App; }

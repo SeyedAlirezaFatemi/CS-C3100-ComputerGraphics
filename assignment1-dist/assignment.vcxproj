@@ -238,6 +238,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\base\App.hpp" />
+    <ClInclude Include="src\base\updatable_priority_queue.hpp" />
     <ClInclude Include="src\base\utility.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

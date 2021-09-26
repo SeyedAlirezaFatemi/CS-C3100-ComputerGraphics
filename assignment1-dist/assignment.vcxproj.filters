@@ -18,5 +18,8 @@
     <ClInclude Include="src\base\utility.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\base\updatable_priority_queue.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
