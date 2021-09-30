@@ -672,10 +672,11 @@ std::tuple<float, Vec4f> calculate_cost_and_optimal_point(Quadric quadric) {
 
 
 tuple<std::vector<Vec3f>, std::vector<Vec3f>, std::vector<std::array<unsigned, 6>>> App::simplifyMesh(std::vector<Vec3f> positions, std::vector<std::array<unsigned, 3>> faces) {
-    // Note: We should check some conditions before and after an edge collapse. We don't do that here! This is a very basic implementation that works really nice!
+    // Note: We should check some conditions before and after an edge collapse.
+    // We don't do that here! This is a very basic implementation.
     std::vector<Quadric> quadrics;
     quadrics.reserve(positions.size());
-    // This would be simplified if I had a halfedge data structure.
+    // This would be simplified if we had a halfedge data structure.
     std::map<unsigned, std::tuple<unsigned, unsigned>> edge_index_to_key;
     std::map<std::tuple<unsigned, unsigned>, unsigned> edge_key_to_index;
     std::vector<Vec4f> optimal_points;
@@ -748,7 +749,7 @@ tuple<std::vector<Vec3f>, std::vector<Vec3f>, std::vector<std::array<unsigned, 6
     }
 
     int face_count = faces.size();
-    // Set this yourself!
+    // Choose the target_face_count.
     int target_face_count = std::max(face_count - 100, 100);
     while (face_count > target_face_count) {
         if (pq.empty()) { break; }
