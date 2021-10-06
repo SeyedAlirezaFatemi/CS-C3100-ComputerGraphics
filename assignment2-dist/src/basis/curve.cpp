@@ -136,6 +136,25 @@ Curve evalBspline(const vector<Vec3f> &P, unsigned steps, bool adaptive, float e
     // YOUR CODE HERE (R2):
     // We suggest you implement this function via a change of basis from
     // B-spline to Bezier.  That way, you can just call your evalBezier function.
+    int jumps = P.size() - 3;
+    Vec4f init_indices{0, 1, 2, 3};
+    Vec4f temp_indices;
+    Mat4f B_bezier_inv = FW::invert(makeMat4f(1, -3, 3, -1, 0, 3, -6, 3, 0, 0, 3, -3, 0, 0, 0, 1));
+    Mat4f B_spline = makeMat4f(1, -3, 3, -1, 4, 0, -6, 3, 1, 3, 3, -3, 0, 0, 0, 1) * (1.0 / 6.0);
+    Vec3f Binit;
+    std::vector<CurvePoint> all_points;
+    all_points.reserve(jumps * steps);
+    for (int i = 0; i < jumps; i++) {
+        temp_indices = init_indices + i;
+        Mat4f G;
+        G.setCol(0, Vec4f(P[temp_indices[0]], 0.0));
+        G.setCol(1, Vec4f(P[temp_indices[1]], 0.0));
+        G.setCol(2, Vec4f(P[temp_indices[2]], 0.0));
+        G.setCol(3, Vec4f(P[temp_indices[3]], 0.0));
+        G = G * B_spline * B_bezier_inv;
+        auto curve = coreBezier(Vec4f(G.getCol(0)).getXYZ(), Vec4f(G.getCol(1)).getXYZ(), Vec4f(G.getCol(2)).getXYZ(), Vec4f(G.getCol(3)).getXYZ(), Binit, steps);
+        all_points.insert(all_points.end(), curve.begin(), curve.end());
+    }
 
     cerr << "\t>>> evalBSpline has been called with the following input:" << endl;
 
@@ -150,7 +169,7 @@ Curve evalBspline(const vector<Vec3f> &P, unsigned steps, bool adaptive, float e
     cerr << "\t>>> Returning empty curve." << endl;
 
     // Return an empty curve right now.
-    return Curve();
+    return all_points;
 }
 
 Curve evalCircle(float radius, unsigned steps) {
