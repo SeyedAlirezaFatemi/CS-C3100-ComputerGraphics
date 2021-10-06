@@ -4,6 +4,7 @@
 #include <windows.h>
 #endif
 #include <GL/gl.h>
+#include <math.h>
 using namespace std;
 using namespace FW;
 
@@ -36,16 +37,19 @@ namespace {
         // YOUR CODE HERE (R1): build the basis matrix and loop the given number of steps,
         // computing points on the spline
 
-        Mat4f B;
-        // ...
+        Mat4f B = makeMat4f(1, -3, 3, -1, 0, 3, -6, 3, 0, 0, 3, -3, 0, 0, 0, 1);
+        Mat4f G;
+        G.setCol(0, Vec4f(p0, 0.0));
+        G.setCol(1, Vec4f(p1, 0.0));
+        G.setCol(2, Vec4f(p2, 0.0));
+        G.setCol(3, Vec4f(p3, 0.0));
 
         for (unsigned i = 0; i <= steps; ++i) {
             // step from 0 to 1
             float t = float(i) / steps;
 
             // Initialize position
-            // We're pivoting counterclockwise around the y-axis
-            R[i].V = radius * Vec3f(FW::cos(t), FW::sin(t), 0);
+            R[i].V = (G * B * Vec4f(1, t, pow(t, 2), pow(t, 3))).getXYZ();
         }
 
         return R;
@@ -83,7 +87,17 @@ Curve evalBezier(const vector<Vec3f> &P, unsigned steps, bool adaptive, float er
     // the SWP files are written.  But you are free to interpret this
     // variable however you want, so long as you can control the
     // "resolution" of the discretized spline curve with it.
-
+    int jumps = (P.size() - 1) / 3;
+    Vec4f init_indices{0, 1, 2, 3};
+    Vec4f temp_indices;
+    Vec3f Binit;
+    std::vector<CurvePoint> all_points;
+    all_points.reserve(jumps * steps);
+    for (int i = 0; i < jumps; i++) {
+        temp_indices = init_indices + i * 3;
+        auto curve = coreBezier(P[temp_indices[0]], P[temp_indices[1]], P[temp_indices[2]], P[temp_indices[3]], Binit, steps);
+        all_points.insert(all_points.end(), curve.begin(), curve.end());
+    }
     // EXTRA CREDIT NOTE:
     // Also compute the other Vec3fs for each CurvePoint: T, N, B.
     // A matrix [N, B, T] should be unit and orthogonal.
@@ -107,7 +121,7 @@ Curve evalBezier(const vector<Vec3f> &P, unsigned steps, bool adaptive, float er
     cerr << "\t>>> Returning empty curve." << endl;
 
     // Right now this will just return this empty curve.
-    return Curve();
+    return all_points;
 }
 
 // the P argument holds the control points and steps gives the amount of uniform tessellation.
