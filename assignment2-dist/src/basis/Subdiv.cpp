@@ -250,10 +250,16 @@ namespace FW {
                 auto v1 = indices[face_index][(j + 1) % 3];
                 auto v2 = indices[face_index][(j + 2) % 3];
                 std::set<int> adjacent_vertices{v1, v2};
+                bool is_boundary = false;
                 auto edge_index = j;
                 auto neighboring_triangle = this->neighborTris[face_index][edge_index];
                 auto neighboring_edge = this->neighborEdges[face_index][edge_index];
-                while (neighboring_triangle != -1 && neighboring_triangle != face_index) {
+                if (neighboring_triangle == -1) {
+                    is_boundary = true;
+                    adjacent_vertices.clear();
+                    adjacent_vertices.insert(v1);
+                }
+                while (!is_boundary && neighboring_triangle != face_index) {
                     auto current_face = neighboring_triangle;
                     auto current_edge = neighboring_edge;
                     auto next_edge_in_current_face = (current_edge + 1) % 3;
@@ -265,17 +271,24 @@ namespace FW {
                     adjacent_vertices.insert(adjacent_vertex_index);
                     neighboring_triangle = this->neighborTris[current_face][next_edge_in_current_face];
                     if (neighboring_triangle == -1) {
+                        // Boundary edge
+                        is_boundary = true;
+                        adjacent_vertices.clear();
+                        adjacent_vertices.insert(adjacent_vertex_index);
                         break;
                     }
                     neighboring_edge = this->neighborEdges[current_face][next_edge_in_current_face];
                 }
 
-                if (neighboring_triangle == -1) {
+                if (is_boundary) {
                     // Loop from the other side
                     edge_index = (j + 2) % 3;
                     neighboring_triangle = this->neighborTris[face_index][edge_index];
                     neighboring_edge = this->neighborEdges[face_index][edge_index];
-                    while (neighboring_triangle != -1 && neighboring_triangle != face_index) {
+                    if (neighboring_triangle == -1) {
+                        adjacent_vertices.insert(v2);
+                    }
+                    while (adjacent_vertices.size() < 2 && neighboring_triangle != face_index) {
                         auto current_face = neighboring_triangle;
                         auto current_edge = neighboring_edge;
                         auto next_edge_in_current_face = (current_edge + 2) % 3;
@@ -284,9 +297,9 @@ namespace FW {
                         if (adjacent_vertices.find(adjacent_vertex_index) != adjacent_vertices.end()) {
                             break;
                         }
-                        adjacent_vertices.insert(adjacent_vertex_index);
                         neighboring_triangle = this->neighborTris[current_face][next_edge_in_current_face];
                         if (neighboring_triangle == -1) {
+                            adjacent_vertices.insert(adjacent_vertex_index);
                             break;
                         }
                         neighboring_edge = this->neighborEdges[current_face][next_edge_in_current_face];
@@ -303,10 +316,15 @@ namespace FW {
 
                 highlightIndices.insert(highlightIndices.end(), adjacent_vertices.begin(), adjacent_vertices.end());
 
-
-                auto n = adjacent_vertices.size();
-                float beta = n == 3 ? 3.0 / 16.0 : 3.0 / (8.0 * n);
-                float alpha = 1.0 - n * beta;
+                float alpha, beta;
+                if (is_boundary) {
+                    beta = 0.125;
+                    alpha = 0.75;
+                } else {
+                    auto n = adjacent_vertices.size();
+                    beta = n == 3 ? 3.0 / 16.0 : 3.0 / (8.0 * n);
+                    alpha = 1.0 - n * beta;
+                }
                 pos = alpha * positions[v0];
                 col = alpha * colors[v0];
                 norm = alpha * normals[v0];
