@@ -12,6 +12,7 @@
 #include <stdio.h>
 
 #include <map>
+#include <set>
 #include <vector>
 
 using namespace FW;
@@ -222,15 +223,15 @@ namespace FW {
         // compute positions for even (old) vertices
         std::vector<bool> vertex_computed(new_positions.size(), false);
 
-        for (int i = 0; i < static_cast<int>(indices.size()); ++i) {
+        for (int face_index = 0; face_index < static_cast<int>(indices.size()); ++face_index) {
             for (int j = 0; j < 3; ++j) {
-                int v0 = indices[i][j];
+                int v0 = indices[face_index][j];
 
                 // If we're doing the debug pass, set vertex index to the one under mouse position
                 if (debugPass) {
-                    i = debugVertexIdx.x;
+                    face_index = debugVertexIdx.x;
                     j = debugVertexIdx.y;
-                    v0 = indices[i][j];
+                    v0 = indices[face_index][j];
                 }
 
                 // don't redo if this one is already done
@@ -246,6 +247,51 @@ namespace FW {
                 // You need to replace these three lines with the loop over the 1-ring
                 // around vertex v0, and compute the new position as a weighted average
                 // of the other vertices as described in the handout.
+                auto v1 = indices[face_index][(j + 1) % 3];
+                auto v2 = indices[face_index][(j + 2) % 3];
+                std::set<int> adjacent_vertices{v1, v2};
+                auto edge_index = j;
+                auto neighboring_triangle = this->neighborTris[face_index][edge_index];
+                auto neighboring_edge = this->neighborEdges[face_index][edge_index];
+                while (neighboring_triangle != -1 && neighboring_triangle != face_index) {
+                    auto current_face = neighboring_triangle;
+                    auto current_edge = neighboring_edge;
+                    auto next_edge_in_current_face = (current_edge + 1) % 3;
+                    // + 1 in this line is to get the vertex at the tip of the edge.
+                    auto adjacent_vertex_index = this->indices[current_face][(next_edge_in_current_face + 1) % 3];
+                    if (adjacent_vertices.find(adjacent_vertex_index) != adjacent_vertices.end()) {
+                        break;
+                    }
+                    adjacent_vertices.insert(adjacent_vertex_index);
+                    neighboring_triangle = this->neighborTris[current_face][next_edge_in_current_face];
+                    if (neighboring_triangle == -1) {
+                        break;
+                    }
+                    neighboring_edge = this->neighborEdges[current_face][next_edge_in_current_face];
+                }
+
+                if (neighboring_triangle == -1) {
+                    // Loop from the other side
+                    edge_index = (j + 2) % 3;
+                    neighboring_triangle = this->neighborTris[face_index][edge_index];
+                    neighboring_edge = this->neighborEdges[face_index][edge_index];
+                    while (neighboring_triangle != -1 && neighboring_triangle != face_index) {
+                        auto current_face = neighboring_triangle;
+                        auto current_edge = neighboring_edge;
+                        auto next_edge_in_current_face = (current_edge + 2) % 3;
+                        // No + 1 here because we want the tail of the edge.
+                        auto adjacent_vertex_index = this->indices[current_face][next_edge_in_current_face];
+                        if (adjacent_vertices.find(adjacent_vertex_index) != adjacent_vertices.end()) {
+                            break;
+                        }
+                        adjacent_vertices.insert(adjacent_vertex_index);
+                        neighboring_triangle = this->neighborTris[current_face][next_edge_in_current_face];
+                        if (neighboring_triangle == -1) {
+                            break;
+                        }
+                        neighboring_edge = this->neighborEdges[current_face][next_edge_in_current_face];
+                    }
+                }
 
                 // If you're having a difficult time, you can try debugging your implementation
                 // with the debug highlight mode. If you press alt, LoopSubdivision will be called
@@ -254,10 +300,21 @@ namespace FW {
                 // vertices with a visible color, so you can ensure that the 1-ring generated is correct.
                 // The solution exe implements this so you can see an example of what you can do with the
                 // highlight mode there.
-                pos = positions[v0];
-                col = colors[v0];
-                norm = normals[v0];
 
+                highlightIndices.insert(highlightIndices.end(), adjacent_vertices.begin(), adjacent_vertices.end());
+
+
+                auto n = adjacent_vertices.size();
+                float beta = n == 3 ? 3.0 / 16.0 : 3.0 / (8.0 * n);
+                float alpha = 1.0 - n * beta;
+                pos = alpha * positions[v0];
+                col = alpha * colors[v0];
+                norm = alpha * normals[v0];
+                for (const auto &vertex_index : adjacent_vertices) {
+                    pos += beta * positions[vertex_index];
+                    col += beta * colors[vertex_index];
+                    norm += beta * normals[vertex_index];
+                }
 
                 // Stop here if we're doing the debug pass since we don't actually need to modify the mesh
                 if (debugPass)
