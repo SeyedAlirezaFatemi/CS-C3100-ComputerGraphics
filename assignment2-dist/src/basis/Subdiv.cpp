@@ -162,10 +162,10 @@ namespace FW {
 
         // If we're debugging, skip this part since we're only interested in the 1-ring portion. Feel free to change this if you need to.
         if (!debugPass) {
-            for (size_t i = 0; i < indices.size(); ++i)
+            for (const auto &face_indices : indices)
                 for (int j = 0; j < 3; ++j) {
-                    int v0 = indices[i][j];
-                    int v1 = indices[i][(j + 1) % 3];
+                    int v0 = face_indices[j];
+                    int v1 = face_indices[(j + 1) % 3];
 
                     // Map the edge endpoint indices to new vertex index.
                     // We use min and max because the edge direction does not matter when we finally
@@ -192,13 +192,14 @@ namespace FW {
                         // YOUR CODE HERE (R3):
                         // Map the edge to the correct vertex index.
                         // This is just one line! Use new_vertices and the index of the position that was just pushed back to the vector.
+                        new_vertices[edge] = new_positions.size() - 1;
                     }
                 }
         }
         // compute positions for even (old) vertices
-        std::vector<bool> vertexComputed(new_positions.size(), false);
+        std::vector<bool> vertex_computed(new_positions.size(), false);
 
-        for (int i = 0; i < (int) indices.size(); ++i) {
+        for (int i = 0; i < static_cast<int>(indices.size()); ++i) {
             for (int j = 0; j < 3; ++j) {
                 int v0 = indices[i][j];
 
@@ -210,10 +211,10 @@ namespace FW {
                 }
 
                 // don't redo if this one is already done
-                if (vertexComputed[v0] && !debugPass)
+                if (vertex_computed[v0] && !debugPass)
                     continue;
 
-                vertexComputed[v0] = true;
+                vertex_computed[v0] = true;
 
                 Vec3f pos, col, norm;
                 // YOUR CODE HERE (R5): reposition the old vertices
@@ -252,36 +253,41 @@ namespace FW {
         // and then, finally, regenerate topology
         // every triangle turns into four new ones
         std::vector<Vec3i> new_indices;
+        // Each triangle turns into 4 triangles.
         new_indices.reserve(indices.size() * 4);
-        for (size_t i = 0; i < indices.size(); ++i) {
-            Vec3i even = indices[i]; // start vertices of e_0, e_1, e_2
+        for (const auto &even : indices) {
+            // start vertices of e_0, e_1, e_2
 
             // YOUR CODE HERE (R3):
             // fill in X and Y (it's the same for both)
-            //auto edge_a = std::make_pair(min(X, Y), max(X, Y));
-            //auto edge_b = ...
-            //auto edge_c = ...
+            auto edge_a = std::make_pair(min(even[0], even[1]), max(even[0], even[1]));
+            auto edge_b = std::make_pair(min(even[1], even[2]), max(even[1], even[2]));
+            auto edge_c = std::make_pair(min(even[2], even[0]), max(even[2], even[0]));
 
             // The edges edge_a, edge_b and edge_c now define the vertex indices via new_vertices.
             // (The mapping is done in the loop above.)
             // The indices define the smaller triangle inside the indices defined by "even", in order.
             // Read the vertex indices out of new_vertices to build the small triangle "odd"
-
-            // Vec3i odd = ...
+            auto new_a = new_vertices[edge_a];
+            auto new_b = new_vertices[edge_b];
+            auto new_c = new_vertices[edge_c];
+            Vec3i odd{new_a, new_b, new_c};
 
             // Then, construct the four smaller triangles from the surrounding big triangle  "even"
             // and the inner one, "odd". Push them to "new_indices".
-
-            // NOTE: REMOVE the following line after you're done with the new triangles.
-            // This just keeps the mesh intact and serves as an example on how to add new triangles.
-            new_indices.push_back(Vec3i(even[0], even[1], even[2]));
+            // New faces connected to even vertices.
+            for (size_t j = 0; j < 3; j++) {
+                new_indices.emplace_back(even[j], odd[j], odd[(j + 2) % 3]);
+            }
+            // New face made by odd vertices.
+            new_indices.emplace_back(odd[0], odd[1], odd[2]);
         }
 
         // ADD THESE LINES when R3 is finished. Replace the originals with the repositioned data.
-        //indices = std::move(new_indices);
-        //positions = std::move(new_positions);
-        //normals = std::move(new_normals);
-        //colors = std::move(new_colors);
+        indices = std::move(new_indices);
+        positions = std::move(new_positions);
+        normals = std::move(new_normals);
+        colors = std::move(new_colors);
     }
 
 } // namespace FW
