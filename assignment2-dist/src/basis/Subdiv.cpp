@@ -159,10 +159,10 @@ namespace FW {
         std::vector<Vec3f> new_positions(positions.size());
         std::vector<Vec3f> new_normals(normals.size());
         std::vector<Vec3f> new_colors(colors.size());
-
+        size_t face_index = 0;
         // If we're debugging, skip this part since we're only interested in the 1-ring portion. Feel free to change this if you need to.
         if (!debugPass) {
-            for (const auto &face_indices : indices)
+            for (const auto &face_indices : indices) {
                 for (int j = 0; j < 3; ++j) {
                     int v0 = face_indices[j];
                     int v1 = face_indices[(j + 1) % 3];
@@ -179,11 +179,32 @@ namespace FW {
                         // YOUR CODE HERE (R4): compute the position for odd (= new) vertex.
                         // You will need to use the neighbor information to find the correct vertices and then combine the four corner vertices with the correct weights.
                         // Be sure to see section 3.2 in the handout for an in depth explanation of the neighbor index tables; the scheme is somewhat involved.
+
+                        auto edge_index = j;
+                        auto neighboring_face_index = this->neighborTris[face_index][edge_index];
+                        bool is_boundary = neighboring_face_index == -1;
                         Vec3f pos, col, norm;
                         // This default implementation just puts the new vertex at the edge midpoint.
-                        pos = 0.5f * (positions[v0] + positions[v1]);
-                        col = 0.5f * (colors[v0] + colors[v1]);
-                        norm = 0.5f * (normals[v0] + normals[v1]);
+                        if (is_boundary) {
+                            pos = 0.5f * (positions[v0] + positions[v1]);
+                            col = 0.5f * (colors[v0] + colors[v1]);
+                            norm = 0.5f * (normals[v0] + normals[v1]);
+                        } else {
+                            /*
+							* We are in @.
+							*		 1
+							*	  /  |  \
+							*	2  @ | * 3
+							*	  \  |  /
+							*	  	 0
+							*/
+                            int v2 = face_indices[(j + 2) % 3];
+                            auto neighboring_edge_index = this->neighborEdges[face_index][edge_index];
+                            int v3 = this->indices[neighboring_face_index][(neighboring_edge_index + 2) % 3];
+                            pos = 0.375f * (this->positions[v0] + this->positions[v1]) + 0.125f * (this->positions[v2] + this->positions[v3]);
+                            col = 0.375f * (this->colors[v0] + this->colors[v1]) + 0.125f * (this->colors[v2] + this->colors[v3]);
+                            norm = 0.375f * (this->normals[v0] + this->normals[v1]) + 0.125f * (this->normals[v2] + this->normals[v3]);
+                        }
 
                         new_positions.push_back(pos);
                         new_colors.push_back(col);
@@ -195,6 +216,8 @@ namespace FW {
                         new_vertices[edge] = new_positions.size() - 1;
                     }
                 }
+                face_index++;
+            }
         }
         // compute positions for even (old) vertices
         std::vector<bool> vertex_computed(new_positions.size(), false);
