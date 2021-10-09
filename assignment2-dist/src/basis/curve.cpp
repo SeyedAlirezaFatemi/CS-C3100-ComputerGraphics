@@ -38,6 +38,7 @@ namespace {
         // computing points on the spline
 
         Mat4f B = makeMat4f(1, -3, 3, -1, 0, 3, -6, 3, 0, 0, 3, -3, 0, 0, 0, 1);
+        Mat4f T = makeMat4f(-3, 6, -3, 0, 3, -12, 9, 0, 0, 6, -9, 0, 0, 0, 3, 0);
         Mat4f G;
         G.setCol(0, Vec4f(p0, 0.0));
         G.setCol(1, Vec4f(p1, 0.0));
@@ -47,9 +48,13 @@ namespace {
         for (unsigned i = 0; i <= steps; ++i) {
             // step from 0 to 1
             float t = float(i) / steps;
-
             // Initialize position
-            R[i].V = (G * B * Vec4f(1, t, pow(t, 2), pow(t, 3))).getXYZ();
+            Vec4f base(1.0, t, pow(t, 2.0), pow(t, 3.0));
+            R[i].V = (G * B * base).getXYZ();
+            // Extra
+            R[i].T = FW::normalize((G * T * base).getXYZ());
+            R[i].N = i == 0 ? FW::normalize(FW::cross(Binit, R[i].T)) : FW::normalize(FW::cross(R[i - 1].B, R[i].T));
+            R[i].B = FW::normalize(FW::cross(R[i].T, R[i].N));
         }
 
         return R;
@@ -90,13 +95,14 @@ Curve evalBezier(const vector<Vec3f> &P, unsigned steps, bool adaptive, float er
     int jumps = (P.size() - 1) / 3;
     Vec4f init_indices{0, 1, 2, 3};
     Vec4f temp_indices;
-    Vec3f Binit;
+    Vec3f Binit{0.0, 0.0, 1.0};
     std::vector<CurvePoint> all_points;
     all_points.reserve(jumps * steps);
     for (int i = 0; i < jumps; i++) {
         temp_indices = init_indices + i * 3;
         auto curve = coreBezier(P[temp_indices[0]], P[temp_indices[1]], P[temp_indices[2]], P[temp_indices[3]], Binit, steps);
         all_points.insert(all_points.end(), curve.begin(), curve.end());
+        Binit = all_points[all_points.size() - 1].B;
     }
     // EXTRA CREDIT NOTE:
     // Also compute the other Vec3fs for each CurvePoint: T, N, B.
@@ -141,7 +147,7 @@ Curve evalBspline(const vector<Vec3f> &P, unsigned steps, bool adaptive, float e
     Vec4f temp_indices;
     Mat4f B_bezier_inv = FW::invert(makeMat4f(1, -3, 3, -1, 0, 3, -6, 3, 0, 0, 3, -3, 0, 0, 0, 1));
     Mat4f B_spline = makeMat4f(1, -3, 3, -1, 4, 0, -6, 3, 1, 3, 3, -3, 0, 0, 0, 1) * (1.0 / 6.0);
-    Vec3f Binit;
+    Vec3f Binit{0.0, 0.0, 1.0};
     std::vector<CurvePoint> all_points;
     all_points.reserve(jumps * steps);
     for (int i = 0; i < jumps; i++) {
@@ -154,6 +160,7 @@ Curve evalBspline(const vector<Vec3f> &P, unsigned steps, bool adaptive, float e
         G = G * B_spline * B_bezier_inv;
         auto curve = coreBezier(Vec4f(G.getCol(0)).getXYZ(), Vec4f(G.getCol(1)).getXYZ(), Vec4f(G.getCol(2)).getXYZ(), Vec4f(G.getCol(3)).getXYZ(), Binit, steps);
         all_points.insert(all_points.end(), curve.begin(), curve.end());
+        Binit = all_points[all_points.size() - 1].B;
     }
 
     cerr << "\t>>> evalBSpline has been called with the following input:" << endl;
