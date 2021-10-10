@@ -26,8 +26,29 @@ namespace {
     // to the first profile).
     static vector<FW::Vec3i> triSweep(unsigned dia, unsigned len, bool closed) {
         vector<FW::Vec3i> ret;
-
+        // We have dia * len in total.
+        len--;
         // YOUR CODE HERE: generate zigzagging triangle indices and push them to ret.
+        for (int i = 0; i < len; i++) {
+            auto current_first = dia * i;
+            auto next_first = dia * (i + 1);
+            for (int j = 0; j < dia - 1; j++) {
+                ret.emplace_back(current_first + j, next_first + j, current_first + j + 1);
+                ret.emplace_back(current_first + j + 1, next_first + j, next_first + j + 1);
+            }
+            // ret.emplace_back(current_first + dia - 1, next_first + dia - 1, current_first);
+            // ret.emplace_back(current_first, next_first + dia - 1, next_first);
+        }
+        if (closed) {
+            auto current_first = len * dia;
+            auto next_first = 0;
+            for (int j = 0; j < dia - 1; j++) {
+                ret.emplace_back(current_first + j, next_first + j, current_first + j + 1);
+                ret.emplace_back(current_first + j + 1, next_first + j, next_first + j + 1);
+            }
+            ret.emplace_back(current_first + dia - 1, next_first + dia - 1, current_first);
+            ret.emplace_back(current_first, next_first + dia - 1, next_first);
+        }
 
         return ret;
     }
@@ -58,8 +79,17 @@ Surface makeSurfRev(const Curve &profile, unsigned steps) {
     // point in the profile (that's two cascaded loops), and finally get the faces with triSweep.
     // You'll need to rotate the curve at each step, similar to the cone in assignment 0 but
     // now you should be using a real rotation matrix.
+    for (int i = 0; i < steps; i++) {
+        float angle = (-2 * FW_PI * i) / (steps);
+        auto rotation_matrix = Mat3f::rotation(Vec3f(0.0, 1.0, 0.0), angle);
+        for (const auto &curve_point : profile) {
+            surface.VV.push_back(rotation_matrix * curve_point.V);
+            surface.VN.push_back(FW::normalize(rotation_matrix * -1.0f * curve_point.N));
+        }
+    }
+    surface.VF = triSweep(profile.size(), steps, true);
 
-    cerr << "\t>>> makeSurfRev called (but not implemented).\n\t>>> Returning empty surface." << endl;
+    // cerr << "\t>>> makeSurfRev called (but not implemented).\n\t>>> Returning empty surface." << endl;
 
     return surface;
 }
