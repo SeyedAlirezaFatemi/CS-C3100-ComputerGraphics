@@ -27,20 +27,17 @@ namespace {
     static vector<FW::Vec3i> triSweep(unsigned dia, unsigned len, bool closed) {
         vector<FW::Vec3i> ret;
         // We have dia * len in total.
-        len--;
         // YOUR CODE HERE: generate zigzagging triangle indices and push them to ret.
-        for (int i = 0; i < len; i++) {
+        for (int i = 0; i < (len - 1); i++) {
             auto current_first = dia * i;
             auto next_first = dia * (i + 1);
             for (int j = 0; j < dia - 1; j++) {
                 ret.emplace_back(current_first + j, next_first + j, current_first + j + 1);
                 ret.emplace_back(current_first + j + 1, next_first + j, next_first + j + 1);
             }
-            // ret.emplace_back(current_first + dia - 1, next_first + dia - 1, current_first);
-            // ret.emplace_back(current_first, next_first + dia - 1, next_first);
         }
         if (closed) {
-            auto current_first = len * dia;
+            auto current_first = (len - 1) * dia;
             auto next_first = 0;
             for (int j = 0; j < dia - 1; j++) {
                 ret.emplace_back(current_first + j, next_first + j, current_first + j + 1);
@@ -48,6 +45,13 @@ namespace {
             }
             ret.emplace_back(current_first + dia - 1, next_first + dia - 1, current_first);
             ret.emplace_back(current_first, next_first + dia - 1, next_first);
+        }
+
+        // Reverse to avoid face culling.
+        for (auto &face : ret) {
+            auto tmp_x = face.x;
+            face.x = face.z;
+            face.z = tmp_x;
         }
 
         return ret;
@@ -80,7 +84,7 @@ Surface makeSurfRev(const Curve &profile, unsigned steps) {
     // You'll need to rotate the curve at each step, similar to the cone in assignment 0 but
     // now you should be using a real rotation matrix.
     for (int i = 0; i < steps; i++) {
-        float angle = (-2 * FW_PI * i) / (steps);
+        float angle = (2 * FW_PI * i) / (steps);
         auto rotation_matrix = Mat3f::rotation(Vec3f(0.0, 1.0, 0.0), angle);
         for (const auto &curve_point : profile) {
             surface.VV.push_back(rotation_matrix * curve_point.V);
@@ -105,8 +109,20 @@ Surface makeGenCyl(const Curve &profile, const Curve &sweep) {
     // YOUR CODE HERE: build the surface.
     // This is again two cascaded loops. Build the local coordinate systems and transform
     // the points in a very similar way to the one with makeSurfRev.
-
-    cerr << "\t>>> makeGenCyl called (but not implemented).\n\t>>> Returning empty surface." << endl;
+    for (const auto &sweep_curve_point : sweep) {
+        Mat4f M;
+        M.setCol(0, Vec4f(sweep_curve_point.N, 0.0f));
+        M.setCol(1, Vec4f(sweep_curve_point.B, 0.0f));
+        M.setCol(2, Vec4f(sweep_curve_point.T, 0.0f));
+        M.setCol(3, Vec4f(sweep_curve_point.V, 1.0f));
+        auto M_for_N = FW::transpose(FW::invert(M.getXYZ()));
+        for (const auto &profile_curve_point : profile) {
+            surface.VV.push_back(sweep_curve_point.V + (M * Vec4f(profile_curve_point.V, 0.0f)).getXYZ());
+            surface.VN.push_back(FW::normalize(-1.0f * M_for_N * profile_curve_point.N));
+        }
+    }
+    surface.VF = triSweep(profile.size(), sweep.size(), true);
+    // cerr << "\t>>> makeGenCyl called (but not implemented).\n\t>>> Returning empty surface." << endl;
 
     return surface;
 }
