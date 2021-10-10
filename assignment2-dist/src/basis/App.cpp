@@ -2,25 +2,25 @@
 
 #include "App.hpp"
 #include "base/Main.hpp"
+#include "base/Random.hpp"
 #include "gpu/GLContext.hpp"
+#include "gui/Image.hpp"
 #include "io/File.hpp"
 #include "io/StateDump.hpp"
-#include "base/Random.hpp"
-#include "gui/Image.hpp"
 
-#include "extra.h"
-#include "surf.h"
-#include "parse.h"
 #include "Subdiv.hpp"
+#include "extra.h"
+#include "parse.h"
+#include "surf.h"
 
-#include <stdio.h>
 #include <conio.h>
+#include <stdio.h>
 
-#include <vector>
-#include <fstream>
-#include <sstream>
-#include <iostream>
 #include <GL/GLU.h>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <vector>
 
 using namespace FW;
 using namespace std;
@@ -28,48 +28,47 @@ using namespace std;
 //------------------------------------------------------------------------
 
 App::App(void)
-:   action_				(Action_None),
-    common_ctrl_		(CommonControls::Feature_Default & ~CommonControls::Feature_RepaintOnF5),
-    cullmode_			(CullMode_None),
-    mouse_pressed_		(false),
-    curvemode_			(true),
-	curvenormalmode_	(false),
-    surfacemode_		(true),
-    pointmode_			(true),
-	subdivisionmode_	(false),
-	wireframe_			(false),
-    normal_length_		(0.1f),
-	current_subdivision_level_(0),
-	errorbound_			(.9f),
-	adaptivetessellation_(false),
-	minstep_(.01f)
-{
+    : action_(Action_None),
+      common_ctrl_(CommonControls::Feature_Default & ~CommonControls::Feature_RepaintOnF5),
+      cullmode_(CullMode_None),
+      mouse_pressed_(false),
+      curvemode_(true),
+      curvenormalmode_(false),
+      surfacemode_(true),
+      pointmode_(true),
+      subdivisionmode_(false),
+      wireframe_(false),
+      normal_length_(0.1f),
+      current_subdivision_level_(0),
+      errorbound_(.9f),
+      adaptivetessellation_(false),
+      minstep_(.01f) {
     common_ctrl_.showFPS(true);
 
-    common_ctrl_.addButton((S32*)&action_, Action_LoadSWP,					FW_KEY_L,       "Load SWP... (L)");
-    common_ctrl_.addButton((S32*)&action_, Action_LoadOBJ,					FW_KEY_M,       "Load OBJ for subdivision... (M)");
-    common_ctrl_.addButton((S32*)&action_, Action_ResetView,				FW_KEY_SPACE,   "Reset view... (SPACE)");
-    common_ctrl_.addButton((S32*)&action_, Action_WriteOBJ,					FW_KEY_O,		"Write to .obj (Slow!) (O)");
+    common_ctrl_.addButton((S32 *) &action_, Action_LoadSWP, FW_KEY_L, "Load SWP... (L)");
+    common_ctrl_.addButton((S32 *) &action_, Action_LoadOBJ, FW_KEY_M, "Load OBJ for subdivision... (M)");
+    common_ctrl_.addButton((S32 *) &action_, Action_ResetView, FW_KEY_SPACE, "Reset view... (SPACE)");
+    common_ctrl_.addButton((S32 *) &action_, Action_WriteOBJ, FW_KEY_O, "Write to .obj (Slow!) (O)");
     common_ctrl_.addSeparator();
-    common_ctrl_.addButton((S32*)&action_, Action_IncreaseSubdivisionLevel,	FW_KEY_PLUS,	"Refine subdivision (+)");
-    common_ctrl_.addButton((S32*)&action_, Action_DecreaseSubdivisionLevel,	FW_KEY_MINUS,	"Coarsen subdivision (-)");
+    common_ctrl_.addButton((S32 *) &action_, Action_IncreaseSubdivisionLevel, FW_KEY_PLUS, "Refine subdivision (+)");
+    common_ctrl_.addButton((S32 *) &action_, Action_DecreaseSubdivisionLevel, FW_KEY_MINUS, "Coarsen subdivision (-)");
     common_ctrl_.addSeparator();
-    common_ctrl_.addToggle(&curvemode_, 									FW_KEY_C,		"Draw curve (C)");
-    common_ctrl_.addToggle(&curvenormalmode_,								FW_KEY_N,		"Draw normals (N)");
-	common_ctrl_.addToggle(&adaptivetessellation_,							FW_KEY_A,		"Adaptive Tessellation (A)", &errorboundchanged_);
-	common_ctrl_.addToggle(&camerapath_.orientationMode,					FW_KEY_NONE,	"Camera path orientation using quaternions");
+    common_ctrl_.addToggle(&curvemode_, FW_KEY_C, "Draw curve (C)");
+    common_ctrl_.addToggle(&curvenormalmode_, FW_KEY_N, "Draw normals (N)");
+    common_ctrl_.addToggle(&adaptivetessellation_, FW_KEY_A, "Adaptive Tessellation (A)", &errorboundchanged_);
+    common_ctrl_.addToggle(&camerapath_.orientationMode, FW_KEY_NONE, "Camera path orientation using quaternions");
     common_ctrl_.addSeparator();
-    common_ctrl_.addToggle(&surfacemode_,									FW_KEY_S,		"Draw surface (S)");
+    common_ctrl_.addToggle(&surfacemode_, FW_KEY_S, "Draw surface (S)");
     common_ctrl_.addSeparator();
-    common_ctrl_.addToggle(&wireframe_,										FW_KEY_W,		"Draw wireframe (W)");
+    common_ctrl_.addToggle(&wireframe_, FW_KEY_W, "Draw wireframe (W)");
     common_ctrl_.addSeparator();
-    common_ctrl_.addToggle(&pointmode_,										FW_KEY_P,		"Draw control points (P)");
+    common_ctrl_.addToggle(&pointmode_, FW_KEY_P, "Draw control points (P)");
     common_ctrl_.addSeparator();
 
-	common_ctrl_.beginSliderStack();
-	common_ctrl_.addSlider(&errorbound_, .0f, 4.0f, false, FW_KEY_NONE, FW_KEY_NONE,		"Adaptive tessellation error bound: %.2f", .0f, &errorboundchanged_);
-	common_ctrl_.addSlider(&minstep_   , .01f, .5f, false, FW_KEY_NONE, FW_KEY_NONE,		"Adaptive tessellation minimum step: %.2f", .0f, &errorboundchanged_);
-	common_ctrl_.endSliderStack();
+    common_ctrl_.beginSliderStack();
+    common_ctrl_.addSlider(&errorbound_, .0f, 4.0f, false, FW_KEY_NONE, FW_KEY_NONE, "Adaptive tessellation error bound: %.2f", .0f, &errorboundchanged_);
+    common_ctrl_.addSlider(&minstep_, .01f, .5f, false, FW_KEY_NONE, FW_KEY_NONE, "Adaptive tessellation minimum step: %.2f", .0f, &errorboundchanged_);
+    common_ctrl_.endSliderStack();
 
     window_.setTitle("Assignment 2");
     window_.addListener(this);
@@ -86,7 +85,7 @@ App::App(void)
 
 //------------------------------------------------------------------------
 
-bool App::handleEvent(const Window::Event& ev) {
+bool App::handleEvent(const Window::Event &ev) {
     if (ev.type == Window::EventType_Close) {
         window_.showModalMessage("Exiting...");
         delete this;
@@ -99,102 +98,97 @@ bool App::handleEvent(const Window::Event& ev) {
         motionFunc(ev);
     }
 
-    Action action  = action_;
+    Action action = action_;
     action_ = Action_None;
 
-    switch (action)
-    {
-    case Action_None:
-        break;
+    switch (action) {
+        case Action_None:
+            break;
 
-    case Action_LoadSWP:
-        filename_ = window_.showFileLoadDialog("Load");
-		if (filename_.getLength()) {
-			loadSWP(filename_.getPtr());
-			if (camerapath_.loaded)
-			{
-				camerapathmode_ = true;
-				curvemode_ = false;
-				surfacemode_ = false;
-				subdivisionmode_ = false;
-				camerastart_ = GetTickCount();
-			}
-			else
-			{
-				camerapathmode_ = false;
-				curvemode_ = true;
-				surfacemode_ = true;
-				subdivisionmode_ = false;
-			}
-			current_subdivision_level_ = 0;
-			makeDisplayLists();
-		}
-        break;
-
-    case Action_LoadOBJ:
-		filename_ = window_.showFileLoadDialog("Load OBJ Mesh", "obj:Wavefront OBJ");
-		if (filename_.getLength()) {
-			loadOBJ(filename_.getPtr());
-			curvemode_ = false;
-			surfacemode_ = false;
-			subdivisionmode_ = true;
-			camerapathmode_ = false;
-			current_subdivision_level_ = 0;
-			makeDisplayLists();
-		}
-        break;
-
-    case Action_ResetView:
-        camera_.SetRotation(Mat4f());
-        camera_.SetCenter(Vec3f());
-		camera_.SetDistance(10);
-        break;
-
-    case Action_WriteOBJ:
-        for (auto i = 0u; i < surface_names_.size(); ++i) {
-            string filename = "surface_" + surface_names_[i] + string(".obj");
-            ofstream out(filename);
-            if (!out) {
-                common_ctrl_.message(sprintf("Could not open file %s, skipping", filename.c_str()));
-                out.close();
-                continue;
-            } else {
-                outputObjFile(out, surfaces_[i]);
-                common_ctrl_.message(sprintf("Wrote %s", filename.c_str()));
+        case Action_LoadSWP:
+            filename_ = window_.showFileLoadDialog("Load");
+            if (filename_.getLength()) {
+                loadSWP(filename_.getPtr());
+                if (camerapath_.loaded) {
+                    camerapathmode_ = true;
+                    curvemode_ = false;
+                    surfacemode_ = false;
+                    subdivisionmode_ = false;
+                    camerastart_ = GetTickCount();
+                } else {
+                    camerapathmode_ = false;
+                    curvemode_ = true;
+                    surfacemode_ = true;
+                    subdivisionmode_ = false;
+                }
+                current_subdivision_level_ = 0;
+                makeDisplayLists();
             }
-        }
-        break;
+            break;
 
-	// change subdiv level
-	case Action_IncreaseSubdivisionLevel:
-		++current_subdivision_level_;
-		// compute new mesh if we haven't done that already
-		// (also, we need to have the initial model loaded)
-		if (!subdivided_meshes_.empty()
-			&& current_subdivision_level_ >= (int)subdivided_meshes_.size()) {
-			MeshWithConnectivity MWC;
+        case Action_LoadOBJ:
+            filename_ = window_.showFileLoadDialog("Load OBJ Mesh", "obj:Wavefront OBJ");
+            if (filename_.getLength()) {
+                loadOBJ(filename_.getPtr());
+                curvemode_ = false;
+                surfacemode_ = false;
+                subdivisionmode_ = true;
+                camerapathmode_ = false;
+                current_subdivision_level_ = 0;
+                makeDisplayLists();
+            }
+            break;
 
-			MWC.fromMesh(*subdivided_meshes_.back());
+        case Action_ResetView:
+            camera_.SetRotation(Mat4f());
+            camera_.SetCenter(Vec3f());
+            camera_.SetDistance(10);
+            break;
 
-			// this is where magic happens
-			MWC.LoopSubdivision();
+        case Action_WriteOBJ:
+            for (auto i = 0u; i < surface_names_.size(); ++i) {
+                string filename = "surface_" + surface_names_[i] + string(".obj");
+                ofstream out(filename);
+                if (!out) {
+                    common_ctrl_.message(sprintf("Could not open file %s, skipping", filename.c_str()));
+                    out.close();
+                    continue;
+                } else {
+                    outputObjFile(out, surfaces_[i]);
+                    common_ctrl_.message(sprintf("Wrote %s", filename.c_str()));
+                }
+            }
+            break;
 
-			auto meshPNC = new Mesh<VertexPNC>();
-			MWC.toMesh(*meshPNC);
+        // change subdiv level
+        case Action_IncreaseSubdivisionLevel:
+            ++current_subdivision_level_;
+            // compute new mesh if we haven't done that already
+            // (also, we need to have the initial model loaded)
+            if (!subdivided_meshes_.empty() && current_subdivision_level_ >= (int) subdivided_meshes_.size()) {
+                MeshWithConnectivity MWC;
 
-			subdivided_meshes_.push_back(unique_ptr<MeshBase>(meshPNC));
-			show_debug_highlight_ = false;
-		}
-		break;
+                MWC.fromMesh(*subdivided_meshes_.back());
 
-	case Action_DecreaseSubdivisionLevel:
-		current_subdivision_level_ = max(0, current_subdivision_level_-1);
-		show_debug_highlight_ = false;
-		break;
+                // this is where magic happens
+                MWC.LoopSubdivision();
 
-    default:
-        FW_ASSERT(false);
-        break;
+                auto meshPNC = new Mesh<VertexPNC>();
+                MWC.toMesh(*meshPNC);
+
+                subdivided_meshes_.push_back(unique_ptr<MeshBase>(meshPNC));
+                show_debug_highlight_ = false;
+            }
+            break;
+
+        case Action_DecreaseSubdivisionLevel:
+            current_subdivision_level_ = max(0, current_subdivision_level_ - 1);
+            show_debug_highlight_ = false;
+            break;
+
+        default:
+            FW_ASSERT(false);
+            break;
     }
 
     window_.setVisible(true);
@@ -207,7 +201,7 @@ bool App::handleEvent(const Window::Event& ev) {
 
 //------------------------------------------------------------------------
 
-void App::keyDownFunc(const Window::Event& ev) {
+void App::keyDownFunc(const Window::Event &ev) {
     int x = ev.mousePos[0];
     int y = ev.mousePos[1];
 
@@ -220,30 +214,28 @@ void App::keyDownFunc(const Window::Event& ev) {
     } else if (ev.key == FW_KEY_MOUSE_RIGHT) {
         mouse_pressed_ = true;
         camera_.MouseClick(Camera::RIGHT, x, y);
+    } else if (ev.key == FW_KEY_ALT && subdivisionmode_) {
+        // start new subdivision level but only for the purposes of our debug call
+        MeshWithConnectivity MWC;
+
+        Mat4f objectToCamera, projection;
+        glGetFloatv(GL_MODELVIEW_MATRIX, objectToCamera.getPtr());
+        glGetFloatv(GL_PROJECTION_MATRIX, projection.getPtr());
+
+        MWC.fromMesh(*subdivided_meshes_.back());
+        debug_highlight_vertices_ = MWC.debugHighlight(mouse_pos_, projection * objectToCamera);
+
+        show_debug_highlight_ = true;
     }
-	else if (ev.key == FW_KEY_ALT && subdivisionmode_)
-	{
-		// start new subdivision level but only for the purposes of our debug call
-		MeshWithConnectivity MWC;
-
-		Mat4f objectToCamera, projection;
-		glGetFloatv(GL_MODELVIEW_MATRIX, objectToCamera.getPtr());
-		glGetFloatv(GL_PROJECTION_MATRIX, projection.getPtr());
-
-		MWC.fromMesh(*subdivided_meshes_.back());
-		debug_highlight_vertices_ = MWC.debugHighlight(mouse_pos_, projection * objectToCamera);
-
-		show_debug_highlight_ = true;
-	}
 }
 
 //------------------------------------------------------------------------
 
-void App::keyUpFunc(const Window::Event& ev) {
+void App::keyUpFunc(const Window::Event &ev) {
     int x = ev.mousePos[0];
     int y = ev.mousePos[1];
     if (ev.key == FW_KEY_MOUSE_LEFT || ev.key == FW_KEY_MOUSE_MIDDLE || ev.key == FW_KEY_MOUSE_RIGHT) {
-        camera_.MouseRelease(x,y);
+        camera_.MouseRelease(x, y);
         mouse_pressed_ = false;
     }
 }
@@ -251,14 +243,14 @@ void App::keyUpFunc(const Window::Event& ev) {
 //------------------------------------------------------------------------
 
 // Called when mouse is moved.
-void App::motionFunc(const Window::Event& ev) {
+void App::motionFunc(const Window::Event &ev) {
     if (mouse_pressed_) {
         int x = ev.mousePos[0];
         int y = ev.mousePos[1];
-        camera_.MouseDrag(x,y);        
+        camera_.MouseDrag(x, y);
     }
-	mouse_pos_ = Vec2f(ev.mousePos) / Vec2f(window_.getSize()) * 2.0f - 1.0f;
-	mouse_pos_.y *= -1;
+    mouse_pos_ = Vec2f(ev.mousePos) / Vec2f(window_.getSize()) * 2.0f - 1.0f;
+    mouse_pos_.y *= -1;
 }
 
 //------------------------------------------------------------------------
@@ -266,9 +258,9 @@ void App::motionFunc(const Window::Event& ev) {
 // Called when the window is resized
 // w, h - width and height of the window in pixels.
 void App::reshapeFunc(int w, int h) {
-    camera_.SetDimensions(w,h);
+    camera_.SetDimensions(w, h);
 
-    camera_.SetViewport(0,0,w,h);
+    camera_.SetViewport(0, 0, w, h);
     camera_.ApplyViewport();
 
     // Set up a perspective view, with square aspect ratio
@@ -286,8 +278,8 @@ void App::drawScene(void) {
     // Remove any shader that may be in use.
     glUseProgram(0);
 
-	DWORD now = GetTickCount();
-	float t = ((now - camerastart_) % 20000) / 20000.0f;
+    DWORD now = GetTickCount();
+    float t = ((now - camerastart_) % 20000) / 20000.0f;
 
     // Clear the rendering window
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -295,90 +287,86 @@ void App::drawScene(void) {
     Vec2i size = window_.getSize();
     reshapeFunc(size[0], size[1]);
 
-    glMatrixMode( GL_MODELVIEW );
+    glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
     // Light color (RGBA)
-    GLfloat Lt0diff[] = {1.0,1.0,1.0,1.0};
-    GLfloat Lt0pos[] = {3.0,3.0,5.0,1.0};
+    GLfloat Lt0diff[] = {1.0, 1.0, 1.0, 1.0};
+    GLfloat Lt0pos[] = {3.0, 3.0, 5.0, 1.0};
     glLightfv(GL_LIGHT0, GL_DIFFUSE, Lt0diff);
     glLightfv(GL_LIGHT0, GL_POSITION, Lt0pos);
 
     camera_.ApplyModelview();
 
-	if (errorboundchanged_ && !subdivisionmode_) {
-		loadSWP(filename_.getPtr());
-		errorboundchanged_ = false;
-		makeDisplayLists();
-	}
+    if (errorboundchanged_ && !subdivisionmode_) {
+        loadSWP(filename_.getPtr());
+        errorboundchanged_ = false;
+        makeDisplayLists();
+    }
 
     // Call the relevant display lists.
-	if (surfacemode_) {
-		common_ctrl_.message(sprintf("Triangle count: %d", tricount_), "tricount_disp");
-		glCallList(surface_lists_[wireframe_ ? 2 : 1]);
-	}
+    if (surfacemode_) {
+        common_ctrl_.message(sprintf("Triangle count: %d", tricount_), "tricount_disp");
+        glCallList(surface_lists_[wireframe_ ? 2 : 1]);
+    }
 
-	if (curvemode_) {
-		if (camerapathmode_)
-		{
-			Mat4f mat = camerapath_.GetWorldToCam(t);
-			glLoadMatrixf(mat.getPtr());
-		}
-		glCallList(curve_lists_[1]);
-	}
+    if (curvemode_) {
+        if (camerapathmode_) {
+            Mat4f mat = camerapath_.GetWorldToCam(t);
+            glLoadMatrixf(mat.getPtr());
+        }
+        glCallList(curve_lists_[1]);
+    }
 
     if (curvenormalmode_)
         glCallList(curve_lists_[2]);
 
-	if (subdivisionmode_) {
-		if (wireframe_)
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		else
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    if (subdivisionmode_) {
+        if (wireframe_)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        else
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-		// This is a wee bit dirty; I've just bolted the Framework's mesh rendering code on
-		// top of the custom system used in this assignment. Oh well. -Jaakko
-		Mat4f objectToCamera, projection;
-		glGetFloatv (GL_MODELVIEW_MATRIX, objectToCamera.getPtr());
-		glGetFloatv (GL_PROJECTION_MATRIX, projection.getPtr());
+        // This is a wee bit dirty; I've just bolted the Framework's mesh rendering code on
+        // top of the custom system used in this assignment. Oh well. -Jaakko
+        Mat4f objectToCamera, projection;
+        glGetFloatv(GL_MODELVIEW_MATRIX, objectToCamera.getPtr());
+        glGetFloatv(GL_PROJECTION_MATRIX, projection.getPtr());
 
-		subdivided_meshes_[current_subdivision_level_]->draw( window_.getGL(), objectToCamera, projection );
-		glUseProgram(0);
-		// clean up, we only want to draw the meshes in wireframe
-		glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+        subdivided_meshes_[current_subdivision_level_]->draw(window_.getGL(), objectToCamera, projection);
+        glUseProgram(0);
+        // clean up, we only want to draw the meshes in wireframe
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 
-		// Draw debug highlight points if they exist
-		if (show_debug_highlight_)
-		{
-			glDisable(GL_LIGHTING);
-			glPointSize(6.0f);
-			glEnable(GL_POINT_SMOOTH);
-			Vec3f color = Vec3f(1, 0, 0);
+        // Draw debug highlight points if they exist
+        if (show_debug_highlight_) {
+            glDisable(GL_LIGHTING);
+            glPointSize(6.0f);
+            glEnable(GL_POINT_SMOOTH);
+            Vec3f color = Vec3f(1, 0, 0);
 
-			glBegin(GL_POINTS);
+            glBegin(GL_POINTS);
 
-			for (auto& p : debug_highlight_vertices_)
-			{
-				glColor3f(color.x, color.y, color.z);
-				glVertex3f(p.x, p.y, p.z);
-			}
+            for (auto &p : debug_highlight_vertices_) {
+                glColor3f(color.x, color.y, color.z);
+                glVertex3f(p.x, p.y, p.z);
+            }
 
-			glEnd();
-			glEnable(GL_LIGHTING);
-		}
-	}
+            glEnd();
+            glEnable(GL_LIGHTING);
+        }
+    }
 
-	if (camerapathmode_)
-	{
-		Mat4f projection;
-		glGetFloatv(GL_PROJECTION_MATRIX, projection.getPtr());
+    if (camerapathmode_) {
+        Mat4f projection;
+        glGetFloatv(GL_PROJECTION_MATRIX, projection.getPtr());
 
-		camerapath_.Draw(t, window_.getGL(), projection);
-	}
+        camerapath_.Draw(t, window_.getGL(), projection);
+    }
 
-	
-	/* This is an example on how to use the draw_lines function which might be useful for debugging.
+
+    /* This is an example on how to use the draw_lines function which might be useful for debugging.
 	
 	std::vector<FW::Vec3f> list(200);
 	for (int i = 0; i < 100; ++i) {
@@ -391,39 +379,36 @@ void App::drawScene(void) {
 
     // This draws the coordinate axes when you're rotating, to
     // keep yourself oriented.
-    if (mouse_pressed_)
-    {
+    if (mouse_pressed_) {
         glPushMatrix();
         glTranslated(camera_.GetCenter()[0], camera_.GetCenter()[1], camera_.GetCenter()[2]);
         glCallList(axis_list_);
         glPopMatrix();
     }
 
-	if (pointmode_)
-	{
-		if (camerapathmode_)
-		{
-			Mat4f mat = camerapath_.GetWorldToCam(t);
-			glLoadMatrixf(mat.getPtr());
-		}
-		glCallList(point_list_);
-	}
+    if (pointmode_) {
+        if (camerapathmode_) {
+            Mat4f mat = camerapath_.GetWorldToCam(t);
+            glLoadMatrixf(mat.getPtr());
+        }
+        glCallList(point_list_);
+    }
 }
 
 //------------------------------------------------------------------------
 
 // Initialize OpenGL's rendering modes
 void App::initRendering() {
-    glEnable(GL_DEPTH_TEST);   // Depth testing must be turned on
-    glEnable(GL_LIGHTING);     // Enable lighting calculations
-    glEnable(GL_LIGHT0);       // Turn on light #0.
+    glEnable(GL_DEPTH_TEST); // Depth testing must be turned on
+    glEnable(GL_LIGHTING);   // Enable lighting calculations
+    glEnable(GL_LIGHT0);     // Turn on light #0.
 
     // Setup polygon drawing
     glShadeModel(GL_SMOOTH);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     // Clear to black
-    glClearColor(0,0,0,1);
+    glClearColor(0, 0, 0, 1);
 
     // Base material colors (they don't change)
     GLfloat diffColor[] = {0.4, 0.4, 0.4, 1};
@@ -444,26 +429,28 @@ void App::initRendering() {
 
 //------------------------------------------------------------------------
 
-// Load in objects from standard input into the class member variables: 
+// Load in objects from standard input into the class member variables:
 // control_points_, curves_, curve_names_, surfaces_, m_surfaceNames.  If
 // loading fails, this will exit the program.
 void App::loadSWP(string filename) {
     ifstream in(filename);
 
-    cout << endl << "*** loading and constructing curves and surfaces ***" << endl;
-	
-	int pathEnd = filename.find_last_of("/\\");
-	string path = filename.substr(0, pathEnd + 1);
+    cout << endl
+         << "*** loading and constructing curves and surfaces ***" << endl;
 
-    if (!parseFile(in, control_points_, curves_, curve_names_, surfaces_, surface_names_, camerapath_, adaptivetessellation_, .5f+.5f*(1.0f-exp(-errorbound_)), minstep_, path)) {
+    int pathEnd = filename.find_last_of("/\\");
+    string path = filename.substr(0, pathEnd + 1);
+
+    if (!parseFile(in, control_points_, curves_, curve_names_, surfaces_, surface_names_, camerapath_, adaptivetessellation_, .5f + .5f * (1.0f - exp(-errorbound_)), minstep_, path)) {
         cerr << "\aerror in file format\a" << endl;
         in.close();
-        exit(-1);              
+        exit(-1);
     }
 
     in.close();
 
-    cerr << endl << "*** done ***" << endl;
+    cerr << endl
+         << "*** done ***" << endl;
 }
 
 //------------------------------------------------------------------------
@@ -472,7 +459,7 @@ void App::loadOBJ(string filename) {
     window_.showModalMessage(sprintf("Loading mesh from '%s'...", filename.c_str()));
 
     String oldError = clearError();
-	MeshBase* mesh = importMesh((FW::String)filename.c_str());
+    MeshBase *mesh = importMesh((FW::String) filename.c_str());
     String newError = getError();
 
     if (restoreError(oldError)) {
@@ -481,51 +468,52 @@ void App::loadOBJ(string filename) {
         return;
     }
 
-	// get rid of the old meshes if necessary
-	subdivided_meshes_.clear();
+    // get rid of the old meshes if necessary
+    subdivided_meshes_.clear();
 
-	// first, weld vertices
-	Mesh<VertexP> meshP(*mesh);
-	meshP.collapseVertices();
+    // first, weld vertices
+    Mesh<VertexP> meshP(*mesh);
+    meshP.collapseVertices();
 
-	// center mesh to origin and normalize scale
-	Vec3f bbmin, bbmax;
-	meshP.getBBox(bbmin, bbmax);
-	float scale = 10.0f / (bbmax-bbmin).length();
-	Vec3f ctr = 0.5f*(bbmin+bbmax);
-	Mat4f T = Mat4f::translate( -ctr );
-	Mat4f S = Mat4f::scale(Vec3f(scale, scale, scale));
-	meshP.xformPositions(S*T);
+    // center mesh to origin and normalize scale
+    Vec3f bbmin, bbmax;
+    meshP.getBBox(bbmin, bbmax);
+    float scale = 10.0f / (bbmax - bbmin).length();
+    Vec3f ctr = 0.5f * (bbmin + bbmax);
+    Mat4f T = Mat4f::translate(-ctr);
+    Mat4f S = Mat4f::scale(Vec3f(scale, scale, scale));
+    meshP.xformPositions(S * T);
 
-	// then, recompute normals to make them smooth
-	Mesh<VertexPNC>* meshPNC = new Mesh<VertexPNC>(meshP);
-	meshPNC->recomputeNormals();
-	for (int i = 0; i < meshPNC->numVertices(); ++i)
-		meshPNC->mutableVertex(i).c = Vec4f(1.0f, 1.0f, 1.0f, 1.0f);
-	delete mesh;
+    // then, recompute normals to make them smooth
+    Mesh<VertexPNC> *meshPNC = new Mesh<VertexPNC>(meshP);
+    meshPNC->recomputeNormals();
+    for (int i = 0; i < meshPNC->numVertices(); ++i)
+        meshPNC->mutableVertex(i).c = Vec4f(1.0f, 1.0f, 1.0f, 1.0f);
+    delete mesh;
 
-	subdivided_meshes_.push_back(std::unique_ptr<MeshBase>(meshPNC));
+    subdivided_meshes_.push_back(std::unique_ptr<MeshBase>(meshPNC));
 
-	common_ctrl_.message(sprintf("Loaded mesh from '%s'", filename.c_str()));
+    common_ctrl_.message(sprintf("Loaded mesh from '%s'", filename.c_str()));
 }
 
 
 //------------------------------------------------------------------------
 
 void App::writeObjects(string prefix) {
-    cerr << endl << "*** writing obj files ***" << endl;
+    cerr << endl
+         << "*** writing obj files ***" << endl;
 
     for (auto i = 0u; i < surface_names_.size(); ++i) {
         if (surface_names_[i] != ".") {
             string filename = prefix + "_" + surface_names_[i] + ".obj";
             ofstream out(filename);
             if (!out) {
-                cerr << "\acould not open file " << filename << ", skipping"<< endl;
+                cerr << "\acould not open file " << filename << ", skipping" << endl;
                 out.close();
                 continue;
             } else {
                 outputObjFile(out, surfaces_[i]);
-                cerr << "wrote " << filename <<  endl;
+                cerr << "wrote " << filename << endl;
             }
         }
     }
@@ -533,8 +521,7 @@ void App::writeObjects(string prefix) {
 
 //------------------------------------------------------------------------
 
-void App::makeDisplayLists()
-{    
+void App::makeDisplayLists() {
     // Compile the display lists
 
     glNewList(curve_lists_[1], GL_COMPILE);
@@ -560,9 +547,9 @@ void App::makeDisplayLists()
 
     glNewList(surface_lists_[2], GL_COMPILE);
     {
-		tricount_ = 0;
+        tricount_ = 0;
         for (auto i = 0u; i < surfaces_.size(); ++i) {
-			tricount_ += surfaces_[i].VF.size();
+            tricount_ += surfaces_[i].VF.size();
             drawSurface(surfaces_[i], false);
             drawNormals(surfaces_[i], normal_length_);
         }
@@ -578,16 +565,25 @@ void App::makeDisplayLists()
         glDisable(GL_LIGHTING);
         glLineWidth(3);
         glPushMatrix();
-        glScaled(5.0,5.0,5.0);
+        glScaled(5.0, 5.0, 5.0);
         glBegin(GL_LINES);
-        glColor4f(1,0.5,0.5,1); glVertex3d(0,0,0); glVertex3d(1,0,0);
-        glColor4f(0.5,1,0.5,1); glVertex3d(0,0,0); glVertex3d(0,1,0);
-        glColor4f(0.5,0.5,1,1); glVertex3d(0,0,0); glVertex3d(0,0,1);
+        glColor4f(1, 0.5, 0.5, 1);
+        glVertex3d(0, 0, 0);
+        glVertex3d(1, 0, 0);
+        glColor4f(0.5, 1, 0.5, 1);
+        glVertex3d(0, 0, 0);
+        glVertex3d(0, 1, 0);
+        glColor4f(0.5, 0.5, 1, 1);
+        glVertex3d(0, 0, 0);
+        glVertex3d(0, 0, 1);
 
-        glColor4f(0.5,0.5,0.5,1);
-        glVertex3d(0,0,0); glVertex3d(-1,0,0);
-        glVertex3d(0,0,0); glVertex3d(0,-1,0);
-        glVertex3d(0,0,0); glVertex3d(0,0,-1);
+        glColor4f(0.5, 0.5, 0.5, 1);
+        glVertex3d(0, 0, 0);
+        glVertex3d(-1, 0, 0);
+        glVertex3d(0, 0, 0);
+        glVertex3d(0, -1, 0);
+        glVertex3d(0, 0, 0);
+        glVertex3d(0, 0, -1);
 
         glEnd();
         glPopMatrix();
@@ -602,8 +598,8 @@ void App::makeDisplayLists()
         glPushAttrib(GL_ALL_ATTRIB_BITS);
 
         // Setup for point drawing
-        glDisable(GL_LIGHTING);    
-        glColor4f(1,1,0.0,1);
+        glDisable(GL_LIGHTING);
+        glColor4f(1, 1, 0.0, 1);
         glPointSize(4);
         glLineWidth(1);
 
@@ -624,9 +620,9 @@ void App::makeDisplayLists()
     glEndList();
 }
 
-void App::screenshot (const String& name) {
+void App::screenshot(const String &name) {
     // Capture image.
-    const Vec2i& size = window_.getGL()->getViewSize();
+    const Vec2i &size = window_.getGL()->getViewSize();
     Image image(size, ImageFormat::R8_G8_B8_A8);
     glUseProgram(0);
     glWindowPos2i(0, 0);
