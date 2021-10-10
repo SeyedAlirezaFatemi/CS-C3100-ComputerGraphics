@@ -171,7 +171,7 @@ bool App::handleEvent(const Window::Event &ev) {
                 MWC.fromMesh(*subdivided_meshes_.back());
 
                 // this is where magic happens
-                MWC.LoopSubdivision();
+                MWC.LoopSubdivision(current_subdivision_level_);
 
                 auto meshPNC = new Mesh<VertexPNC>();
                 MWC.toMesh(*meshPNC);

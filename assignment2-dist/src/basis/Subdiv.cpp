@@ -117,7 +117,7 @@ namespace FW {
         // Call subdivision with the debugPass flag on to get debug data
         debugPass = true;
         debugVertexIdx = closestIdx;
-        LoopSubdivision();
+        LoopSubdivision(1);
 
         // Set flag to false so we can run actual subdivision later
         debugPass = false;
@@ -147,7 +147,7 @@ namespace FW {
         dest.mutableIndices(0).replace(0, dest.indices(0).getSize(), &indices[0], (int) indices.size());
     }
 
-    void MeshWithConnectivity::LoopSubdivision() {
+    void MeshWithConnectivity::LoopSubdivision(int level) {
         // generate new (odd) vertices
 
         // visited edge -> vertex position information
@@ -205,6 +205,27 @@ namespace FW {
                             pos = 0.375f * (this->positions[v0] + this->positions[v1]) + 0.125f * (this->positions[v2] + this->positions[v3]);
                             col = 0.375f * (this->colors[v0] + this->colors[v1]) + 0.125f * (this->colors[v2] + this->colors[v3]);
                             norm = 0.375f * (this->normals[v0] + this->normals[v1]) + 0.125f * (this->normals[v2] + this->normals[v3]);
+                        }
+
+                        switch (level) {
+                            case 1:
+                                col = Vec3f(221, 251, 210) / 255.0;
+                                break;
+                            case 2:
+                                col = Vec3f(188, 237, 246) / 255.0;
+                                break;
+                            case 3:
+                                col = Vec3f(107, 127, 215) / 255.0;
+                                break;
+                            case 4:
+                                col = Vec3f(76, 42, 133) / 255.0;
+                                break;
+                            case 5:
+                                col = Vec3f(50, 14, 59) / 255.0;
+                                break;
+                            default:
+                                col = Vec3f(50, 14, 59) / 255.0;
+                                break;
                         }
 
                         new_positions.push_back(pos);

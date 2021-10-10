@@ -16,7 +16,7 @@ namespace FW {
         void fromMesh(const Mesh<VertexPNC> &mesh);
         void toMesh(Mesh<VertexPNC> &dest);
 
-        void LoopSubdivision();
+        void LoopSubdivision(int level);
 
         void computeConnectivity();
 
