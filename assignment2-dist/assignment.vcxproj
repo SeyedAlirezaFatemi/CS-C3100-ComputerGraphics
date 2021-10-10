@@ -353,6 +353,7 @@
     <ClInclude Include="src\basis\curve.h" />
     <ClInclude Include="src\basis\extra.h" />
     <ClInclude Include="src\basis\parse.h" />
+    <ClInclude Include="src\basis\quat.hpp" />
     <ClInclude Include="src\basis\Subdiv.hpp" />
     <ClInclude Include="src\basis\surf.h" />
   </ItemGroup>
