@@ -29,6 +29,10 @@ void Skeleton::setJointRotation(unsigned index, Vec3f euler_angles) {
     // upper 3x3 block of "to_parent" with the result.
     // Hints: You can use Mat3f::rotation() three times in a row,
     // once for each main axis, and multiply the results.
+    auto rot = FW::Mat3f::rotation(Vec3f(1, 0, 0), euler_angles.x) * FW::Mat3f::rotation(Vec3f(0, 1, 0), euler_angles.y) * FW::Mat3f::rotation(Vec3f(0, 0, 1), euler_angles.z);
+    joint.to_parent.setCol(0, Vec4f(rot.getCol(0), 0));
+    joint.to_parent.setCol(1, Vec4f(rot.getCol(1), 0));
+    joint.to_parent.setCol(2, Vec4f(rot.getCol(2), 0));
 }
 
 void Skeleton::incrJointRotation(unsigned index, Vec3f euler_angles) {
