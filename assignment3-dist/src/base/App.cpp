@@ -379,6 +379,9 @@ void App::renderSkeleton() {
         // (If you understand transformation matrices correctly, you can directly
         // read the these vectors off of the matrices.)
         Vec3f right, up, ahead;
+        right = transforms[i].getXYZ().getCol(0);
+        up = transforms[i].getXYZ().getCol(1);
+        ahead = transforms[i].getXYZ().getCol(2);
         // Then let's draw some lines to show the joint coordinate system.
         // Draw a small coloured line segment from the joint's world position towards
         // each of its local coordinate axes (the line length should be determined by "scale").
@@ -388,20 +391,33 @@ void App::renderSkeleton() {
 
         // draw the x axis... ("right")
         glColor3f(1, 0, 0); // red
-        // glVertex3f(...); glVertex3f(...);
+        glVertex3f(joint_world_pos.x, joint_world_pos.y, joint_world_pos.z);
+        auto temp = joint_world_pos + scale * right;
+        glVertex3f(temp.x, temp.y, temp.z);
 
         // ..and the y axis.. ("up")
         glColor3f(0, 1, 0); // green
-        // glVertex3f(...); glVertex3f(...);
+        glVertex3f(joint_world_pos.x, joint_world_pos.y, joint_world_pos.z);
+        temp = joint_world_pos + scale * up;
+        glVertex3f(temp.x, temp.y, temp.z);
 
         // ..and the z axis ("ahead").
         glColor3f(0, 0, 1); // blue
-        // glVertex3f(...); glVertex3f(...);
+        glVertex3f(joint_world_pos.x, joint_world_pos.y, joint_world_pos.z);
+        temp = joint_world_pos + scale * ahead;
+        glVertex3f(temp.x, temp.y, temp.z);
 
         // Finally, draw a line segment from the world position of this joint to the world
         // position of the parent joint. You should first check if the parent exists
         // using skel_.getJointParent(i) - it returns -1 for the root, which has no parent.
-
+        auto parent_index = skel_.getJointParent(i);
+        if (parent_index != -1) {
+            auto parent_world_pos = transforms[parent_index] * Vec3f(0, 0, 0);
+            glColor3f(1, 1, 1);
+            glVertex3f(joint_world_pos.x, joint_world_pos.y, joint_world_pos.z);
+            temp = parent_world_pos;
+            glVertex3f(temp.x, temp.y, temp.z);
+        }
         // ...
         glEnd(); // we're done drawing lines
     }
