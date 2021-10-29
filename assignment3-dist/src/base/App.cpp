@@ -359,6 +359,7 @@ void App::renderSkeleton() {
         // YOUR CODE HERE (R1)
         // Use the transforms to obtain the position of the joint in world space.
         // This should be a one-liner.
+        Vec3f joint_world_pos = transforms[i] * Vec3f(0, 0, 0);
 
 
         // glBegin()-glEnd() with glVertex() commands in between is how draw calls
