@@ -227,10 +227,21 @@ void App::initRendering() {
             uniform mat4 uJoints[numJoints];
 
             void main() {
-                float clampedCosine = clamp(dot(aNormal, directionToLight), 0.0, 1.0);
+                vec3 temp_position = vec3(0.0, 0.0, 0.0);
+                vec3 temp_normal = vec3(0.0, 0.0, 0.0);
+                for (int i = 0; i < 4; i++) {
+                    temp_position += vec3(uJoints[aJoints1[i]] * aWeights1[i] * vec4(aPosition));
+                    temp_normal += vec3(transpose(inverse(uJoints[aJoints1[i]])) * aWeights1[i] * vec4(aNormal, 0.0));
+                }
+                for (int i = 0; i < 4; i++) {
+                    temp_position += vec3(uJoints[aJoints2[i]] * aWeights2[i] * vec4(aPosition));
+                    temp_normal += vec3(transpose(inverse(uJoints[aJoints2[i]])) * aWeights2[i] * vec4(aNormal, 0.0));
+                }
+                gl_Position = uWorldToClip * vec4(temp_position, 1.0);
+                temp_normal = normalize(temp_normal);
+                float clampedCosine = clamp(dot(temp_normal, directionToLight), 0.0, 1.0);
                 vec3 litColor = vec3(clampedCosine);
                 vColor = vec4(mix(aColor.xyz, litColor, uShadingMix), 1);
-                gl_Position = uWorldToClip * aPosition;
             }),
         "#version 330\n" FW_GL_SHADER_SOURCE(
             in vec4 vColor;
@@ -440,7 +451,7 @@ vector<Vertex> App::computeSSD(const vector<WeightedVertex> &source_vertices) {
             auto joint_index = joints[i];
             v.position += (weights[i] * ssd_transforms[joint_index] * Vec4f(sv.position, 1)).getXYZ();
             v.color += weights[i] * ssd_transforms[joint_index] * sv.color;
-            v.normal += (weights[i] * (ssd_transforms[joint_index]).transposed().inverted() * Vec4f(sv.normal, 1)).getXYZ();
+            v.normal += (weights[i] * (ssd_transforms[joint_index]).transposed().inverted() * Vec4f(sv.normal, 0)).getXYZ();
         }
         v.normal = normalize(v.normal);
         skinned_vertices.push_back(v);
