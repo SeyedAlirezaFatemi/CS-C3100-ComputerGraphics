@@ -422,6 +422,8 @@ void App::renderSkeleton() {
         // position of the parent joint. You should first check if the parent exists
         // using skel_.getJointParent(i) - it returns -1 for the root, which has no parent.
         auto parent_index = skel_.getJointParent(i);
+        // auto name = skel_.getJointName(i);
+        // cout << name << parent_index << endl;
         if (parent_index != -1) {
             auto parent_world_pos = transforms[parent_index] * Vec3f(0, 0, 0);
             glColor3f(1, 1, 1);
