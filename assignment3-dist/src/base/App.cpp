@@ -427,17 +427,22 @@ vector<Vertex> App::computeSSD(const vector<WeightedVertex> &source_vertices) {
     vector<Mat4f> ssd_transforms = skel_.getSSDTransforms();
     vector<Vertex> skinned_vertices;
     skinned_vertices.reserve(source_vertices.size());
-    Vertex v;
     for (const auto &sv : source_vertices) {
         // YOUR CODE HERE (R4 & R5)
         // Compute the skinned position for each vertex and push it to skinned_vertices.
         // This starter code just copies the source vertex untouched, so the result is not animated.
         // Replace these lines with the loop that applies the bone transforms and weights.
         // For R5, transform the normals as well.
-        v.position = sv.position;
-        v.normal = sv.normal;
-        v.color = sv.color;
-
+        Vertex v;
+        auto joints = sv.joints;
+        auto weights = sv.weights;
+        for (int i = 0; i < WEIGHTS_PER_VERTEX; i++) {
+            auto joint_index = joints[i];
+            v.position += (weights[i] * ssd_transforms[joint_index] * Vec4f(sv.position, 1)).getXYZ();
+            v.color += weights[i] * ssd_transforms[joint_index] * sv.color;
+            v.normal += (weights[i] * (ssd_transforms[joint_index]).transposed().inverted() * Vec4f(sv.normal, 1)).getXYZ();
+        }
+        v.normal = normalize(v.normal);
         skinned_vertices.push_back(v);
     }
     return skinned_vertices;
