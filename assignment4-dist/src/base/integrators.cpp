@@ -2,22 +2,37 @@
 #include "particle_systems.hpp"
 #include "utility.hpp"
 
+auto eulerHelper(ParticleSystem &ps, float step) {
+    auto const &current_state = ps.state();
+    auto f = ps.evalF(current_state);
+    auto next_state = State(current_state.size());
+    int idx = 0;
+    for (auto &particle_state : next_state) {
+        particle_state = current_state[idx] + f[idx] * step;
+        idx++;
+    }
+    return next_state;
+};
+
 void eulerStep(ParticleSystem &ps, float step) {
     // YOUR CODE HERE (R1)
     // Implement an Euler integrator.
-    auto current_state = ps.state();
-    auto f = ps.evalF(current_state);
-    int idx = 0;
-    for (auto &particle_state : current_state) {
-        particle_state += f[idx] * step;
-        idx++;
-    }
-    ps.set_state(current_state);
+    ps.set_state(eulerHelper(ps, step));
 };
 
 void trapezoidStep(ParticleSystem &ps, float step) {
     // YOUR CODE HERE (R3)
     // Implement a trapezoid integrator.
+    auto const &current_state = ps.state();
+    auto const f0 = ps.evalF(current_state);
+    auto f1 = ps.evalF(eulerHelper(ps, step));
+    auto next_state = State(f0.size());
+    int idx = 0;
+    for (auto &particle_state : next_state) {
+        particle_state = current_state[idx] + step * 0.5f * (f0[idx] + f1[idx]);
+        idx++;
+    }
+    ps.set_state(next_state);
 }
 
 void midpointStep(ParticleSystem &ps, float step) {
