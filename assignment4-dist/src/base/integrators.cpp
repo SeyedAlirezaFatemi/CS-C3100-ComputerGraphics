@@ -1,11 +1,18 @@
-
 #include "integrators.hpp"
 #include "particle_systems.hpp"
 #include "utility.hpp"
 
-void eulerStep(ParticleSystem &ps, float step){
+void eulerStep(ParticleSystem &ps, float step) {
     // YOUR CODE HERE (R1)
     // Implement an Euler integrator.
+    auto current_state = ps.state();
+    auto f = ps.evalF(current_state);
+    int idx = 0;
+    for (auto &particle_state : current_state) {
+        particle_state += f[idx] * step;
+        idx++;
+    }
+    ps.set_state(current_state);
 };
 
 void trapezoidStep(ParticleSystem &ps, float step) {
