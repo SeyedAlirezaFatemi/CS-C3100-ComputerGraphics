@@ -228,17 +228,41 @@ void ClothSystem::reset() {
     // structural springs, shear springs and flex springs.
     auto structural_horizontal_rest_length = width / (x_ - 1);
     auto structural_vertical_rest_length = height / (y_ - 1);
+    auto shear_rest_length = FW::sqrt(FW::pow(structural_horizontal_rest_length, 2) + FW::pow(structural_vertical_rest_length, 2));
     this->springs_.clear();
     for (int x = 0; x < x_; x++) {
         for (int y = 0; y < y_; y++) {
-            this->current_state_[pos_idx(x, y)] = Vec3f(width * x / (x_ - 1) - 0.5f * width, -height * y / (y_ - 1), 0);
+            this->current_state_[pos_idx(x, y)] = Vec3f(width * x / (x_ - 1) - 0.5f * width, 0, -height * y / (y_ - 1));
+            // Check next column exist
             if (x + 1 < x_) {
                 // Structural
                 this->springs_.emplace_back(particle_idx(x, y), particle_idx(x + 1, y), spring_k, structural_horizontal_rest_length);
             }
+            // Check next next column exist
+            if (x + 2 < x_) {
+                // Flex
+                this->springs_.emplace_back(particle_idx(x, y), particle_idx(x + 2, y), spring_k, 2 * structural_horizontal_rest_length);
+            }
+            // Check next row exist
             if (y + 1 < y_) {
                 // Structural
                 this->springs_.emplace_back(particle_idx(x, y), particle_idx(x, y + 1), spring_k, structural_vertical_rest_length);
+                // Check previous column exist
+                if (x - 1 >= 0) {
+                    // Shear
+                    this->springs_.emplace_back(particle_idx(x, y), particle_idx(x - 1, y + 1), spring_k, shear_rest_length);
+                }
+                // Check next column exist
+                if (x + 1 < x_) {
+                    // Shear
+                    this->springs_.emplace_back(particle_idx(x, y), particle_idx(x + 1, y + 1), spring_k, shear_rest_length);
+                }
+            }
+
+            // Check next next row exist
+            if (y + 2 < y_) {
+                // Flex
+                this->springs_.emplace_back(particle_idx(x, y), particle_idx(x, y + 2), spring_k, 2 * structural_vertical_rest_length);
             }
         }
     }
