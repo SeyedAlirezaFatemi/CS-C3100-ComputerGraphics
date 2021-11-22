@@ -2,6 +2,16 @@
 #include "particle_systems.hpp"
 #include "utility.hpp"
 
+auto takeStep(const State &state, const State &f, float step) {
+    auto next_state = State(state.size());
+    int idx = 0;
+    for (auto &particle_state : next_state) {
+        particle_state = state[idx] + f[idx] * step;
+        idx++;
+    }
+    return next_state;
+}
+
 auto eulerHelper(ParticleSystem &ps, float step) {
     auto const &current_state = ps.state();
     auto f = ps.evalF(current_state);
@@ -52,6 +62,24 @@ void midpointStep(ParticleSystem &ps, float step) {
 
 void rk4Step(ParticleSystem &ps, float step) {
     // EXTRA: Implement the RK4 Runge-Kutta integrator.
+    const auto &x0 = ps.state();
+    auto k1 = ps.evalF(x0);
+    auto n = x0.size();
+
+    auto state_for_k2 = takeStep(x0, k1, step / 2);
+    auto k2 = ps.evalF(state_for_k2);
+    auto state_for_k3 = takeStep(x0, k2, step / 2);
+    auto k3 = ps.evalF(state_for_k3);
+    auto state_for_k4 = takeStep(x0, k3, step);
+    auto k4 = ps.evalF(state_for_k4);
+
+    auto next_state = State(n);
+    int idx = 0;
+    for (auto &particle_state : next_state) {
+        particle_state = x0[idx] + step * 0.1667f * (k1[idx] + 2.0f * k2[idx] + 2.0f * k3[idx] + k4[idx]);
+        idx++;
+    }
+    ps.set_state(next_state);
 }
 
 #ifdef EIGEN_SPARSECORE_MODULE_H
