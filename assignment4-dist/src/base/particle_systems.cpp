@@ -124,6 +124,14 @@ Lines SpringSystem::getLines() {
     return l;
 }
 
+int pos_idx(int index) {
+    return 2 * index;
+}
+
+int vel_idx(int index) {
+    return 2 * index + 1;
+}
+
 void PendulumSystem::reset() {
     const auto spring_k = 1000.0f;
     const auto start_point = Vec3f(0);
@@ -133,6 +141,13 @@ void PendulumSystem::reset() {
     // Set the initial state for a pendulum system with n_ particles
     // connected with springs into a chain from start_point to end_point with uniform intervals.
     // The rest length of each spring is its length in this initial configuration.
+    auto initial_length = (start_point - end_point).length();
+    auto rest_length = initial_length / (n_ - 1);
+    this->springs_.reserve(n_ - 1);
+    for (int i = 0; i < n_ - 1; i++) {
+        this->springs_.emplace_back(i, i + 1, spring_k, rest_length);
+        current_state_[pos_idx(i + 1)] = (end_point * (i + 1)) / (n_ - 1);
+    }
 }
 
 State PendulumSystem::evalF(const State &state) const {
@@ -141,6 +156,18 @@ State PendulumSystem::evalF(const State &state) const {
     auto f = State(2 * n_);
     // YOUR CODE HERE (R4)
     // As in R2, return a derivative of the system state "state".
+    for (auto const &spring : this->springs_) {
+        f[vel_idx(spring.i1)] += fSpring(current_state_[pos_idx(spring.i1)], current_state_[pos_idx(spring.i2)], spring.k, spring.rlen);
+        f[vel_idx(spring.i2)] += fSpring(current_state_[pos_idx(spring.i2)], current_state_[pos_idx(spring.i1)], spring.k, spring.rlen);
+    }
+    for (int i = 1; i < n_; i++) {
+        f[pos_idx(i)] = state[vel_idx(i)];
+        f[vel_idx(i)] += fGravity(mass) + fDrag(current_state_[vel_idx(i)], drag_k);
+        f[vel_idx(i)] /= mass;
+    }
+    // Fixed particle
+    f[0] = Vec3f(0.0f);
+    f[1] = Vec3f(0.0f);
     return f;
 }
 
