@@ -2,6 +2,7 @@
 
 #include "../framework/base/Math.hpp"
 
+#include <list>
 #include <vector>
 
 // EXTRA: probably want to use Eigen for the implicit solver
@@ -37,7 +38,7 @@ public:
 #endif
     virtual void reset() = 0;
     const State &state() { return current_state_; }
-    void set_state(State s) { current_state_ = s; }
+    virtual void set_state(State s) { current_state_ = s; }
     virtual Points getPoints() { return Points(); }
     virtual Lines getLines() { return Lines(); }
 
@@ -58,6 +59,22 @@ public:
 
 private:
     float radius_;
+};
+
+class Sprinkler : public ParticleSystem {
+public:
+    Sprinkler() { reset(); }
+    State evalF(const State &) const override;
+#ifdef EIGEN_SPARSECORE_MODULE_H
+    void evalJ(const State &, SparseMatrix &result, bool initial) const override;
+#endif
+    void reset() override;
+    void set_state(State s) override;
+    Points getPoints() override { return points_to_render_; };
+
+private:
+    std::list<FW::Vec3f> points_;
+    Points points_to_render_;
 };
 
 class SpringSystem : public ParticleSystem {

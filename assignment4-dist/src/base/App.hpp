@@ -34,6 +34,7 @@ private:
 		SPRING_SYSTEM,
 		PENDULUM_SYSTEM,
 		CLOTH_SYSTEM,
+		SPRINKLER_SYSTEM,
 		COMPUTE_CLOTH
 	};
 	enum IntegratorType {
@@ -84,6 +85,7 @@ private:
 	SpringSystem	spring_system_;
 	PendulumSystem	pendulum_system_;
 	ClothSystem		cloth_system_;
+	Sprinkler		sprinkler_;
 
 	bool			initial_implicit_;
 

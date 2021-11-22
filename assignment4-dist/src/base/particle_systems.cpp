@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <list>
 #include <numeric>
 
 using namespace std;
@@ -34,6 +35,61 @@ void SimpleSystem::reset() {
 
 State SimpleSystem::evalF(const State &state) const {
     State f(1, Vec3f(-state[0].y, state[0].x, 0));
+    return f;
+}
+
+void Sprinkler::reset() {
+    current_state_ = State();
+    points_to_render_ = Points();
+    // points_ = list<FW::Vec3f>();
+}
+
+void Sprinkler::set_state(State s) {
+    // std::list<Vec3f>::iterator i = points_.begin();
+    State filtered_state;
+    auto const n = s.size();
+    srand(time(0));
+    time_t seconds;
+    seconds = time(NULL) % 1000;
+    for (int i = 0; i < n / 3; i++) {
+        // Filter old particles
+        // std::cout << s[i * 3 + 2][0] << std::endl;
+        // std::cout << "noe: "<< seconds% 1000 << std::endl;
+        if (seconds % 1000 - s[i * 3 + 2][0] < 5) {
+            filtered_state.push_back(s[i * 3]);
+            filtered_state.push_back(s[i * 3 + 1]);
+            filtered_state.push_back(s[i * 3 + 2]);
+        } else {
+            // std::cout << "removed" << std::endl;
+        }
+    }
+    if (filtered_state.size() < 12000) {
+        for (int i = 0; i < 5; i++) {
+            // std::cout << "added" << std::endl;
+            float angle = (((double) rand() / (RAND_MAX)) + 1) * 2.0f * FW_PI;
+            // Add new particles
+            filtered_state.emplace_back(0.0f);
+            filtered_state.emplace_back(FW::sin(angle), 1.0f, FW::cos(angle));
+            filtered_state.emplace_back(seconds);
+        }
+    }
+    points_to_render_.clear();
+    for (int i = 0; i < filtered_state.size() / 3; i++) {
+        points_to_render_.push_back(filtered_state[3 * i]);
+    }
+    current_state_ = filtered_state;
+}
+
+State Sprinkler::evalF(const State &state) const {
+    const auto drag_k = 0.5f;
+    const auto mass = 1.0f;
+    auto const n = state.size();
+    State f(n);
+    for (int i = 0; i < n / 3; i++) {
+        f[3 * i] = state[3 * i + 1];
+        f[3 * i + 1] = fGravity(mass) + fDrag(state[3 * i + 1], drag_k);
+        f[3 * i + 2] = 0;
+    }
     return f;
 }
 

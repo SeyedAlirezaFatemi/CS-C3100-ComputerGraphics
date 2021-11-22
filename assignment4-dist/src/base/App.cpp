@@ -43,6 +43,7 @@ App::App(void)
       spring_system_(),
       pendulum_system_(10),
       cloth_system_(20, 20),
+      sprinkler_(),
       wind_(false),
       wind_changed_(false),
       initial_implicit_(false) {
@@ -54,6 +55,7 @@ App::App(void)
     common_ctrl_.addToggle((S32 *) &ps_type_, SPRING_SYSTEM, FW_KEY_2, "R2 Spring system (2)", &system_changed_);
     common_ctrl_.addToggle((S32 *) &ps_type_, PENDULUM_SYSTEM, FW_KEY_3, "R4 Pendulum system (3)", &system_changed_);
     common_ctrl_.addToggle((S32 *) &ps_type_, CLOTH_SYSTEM, FW_KEY_4, "R5 Cloth system (4)", &system_changed_);
+    common_ctrl_.addToggle((S32 *) &ps_type_, SPRINKLER_SYSTEM, FW_KEY_5, "Extra Sprinkler system (5)", &system_changed_);
 #ifdef COMPUTE_CLOTH_MODULE
     common_ctrl_.addToggle((S32 *) &ps_type_, COMPUTE_CLOTH, FW_KEY_NONE, "EXTRA: Compute cloth", &system_changed_);
 #endif
@@ -112,6 +114,9 @@ bool App::handleEvent(const Window::Event &ev) {
                 break;
             case CLOTH_SYSTEM:
                 ps_ = &cloth_system_;
+                break;
+            case SPRINKLER_SYSTEM:
+                ps_ = &sprinkler_;
                 break;
 #ifdef COMPUTE_CLOTH_MODULE
             case COMPUTE_CLOTH:
