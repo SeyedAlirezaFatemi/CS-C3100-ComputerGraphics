@@ -42,7 +42,7 @@ App::App(void)
       simple_system_(),
       spring_system_(),
       pendulum_system_(10),
-      cloth_system_(20, 20),
+      cloth_system_(3, 3),
       initial_implicit_(false) {
     static_assert(is_standard_layout<Vertex>::value, "struct Vertex must be standard layout to use offsetof");
     initRendering();

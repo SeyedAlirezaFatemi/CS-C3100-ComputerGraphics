@@ -141,6 +141,7 @@ void PendulumSystem::reset() {
     // Set the initial state for a pendulum system with n_ particles
     // connected with springs into a chain from start_point to end_point with uniform intervals.
     // The rest length of each spring is its length in this initial configuration.
+    this->springs_.clear();
     auto initial_length = (start_point - end_point).length();
     auto rest_length = initial_length / (n_ - 1);
     this->springs_.reserve(n_ - 1);
@@ -157,12 +158,12 @@ State PendulumSystem::evalF(const State &state) const {
     // YOUR CODE HERE (R4)
     // As in R2, return a derivative of the system state "state".
     for (auto const &spring : this->springs_) {
-        f[vel_idx(spring.i1)] += fSpring(current_state_[pos_idx(spring.i1)], current_state_[pos_idx(spring.i2)], spring.k, spring.rlen);
-        f[vel_idx(spring.i2)] += fSpring(current_state_[pos_idx(spring.i2)], current_state_[pos_idx(spring.i1)], spring.k, spring.rlen);
+        f[vel_idx(spring.i1)] += fSpring(state[pos_idx(spring.i1)], state[pos_idx(spring.i2)], spring.k, spring.rlen);
+        f[vel_idx(spring.i2)] += fSpring(state[pos_idx(spring.i2)], state[pos_idx(spring.i1)], spring.k, spring.rlen);
     }
     for (int i = 1; i < n_; i++) {
         f[pos_idx(i)] = state[vel_idx(i)];
-        f[vel_idx(i)] += fGravity(mass) + fDrag(current_state_[vel_idx(i)], drag_k);
+        f[vel_idx(i)] += fGravity(mass) + fDrag(state[vel_idx(i)], drag_k);
         f[vel_idx(i)] /= mass;
     }
     // Fixed particle
@@ -200,6 +201,23 @@ Lines PendulumSystem::getLines() {
     return l;
 }
 
+
+int ClothSystem::particle_idx(int x, int y) const {
+    return x + y * y_;
+}
+int ClothSystem::pos_idx(int x, int y) const {
+    return 2 * (x + y * y_);
+}
+int ClothSystem::pos_idx(int idx) const {
+    return 2 * idx;
+}
+int ClothSystem::vel_idx(int x, int y) const {
+    return pos_idx(x, y) + 1;
+}
+int ClothSystem::vel_idx(int idx) const {
+    return pos_idx(idx) + 1;
+}
+
 void ClothSystem::reset() {
     const auto spring_k = 300.0f;
     const auto width = 1.5f, height = 1.5f; // width and height of the whole grid
@@ -208,6 +226,22 @@ void ClothSystem::reset() {
     // Construct a particle system with a x_ * y_ grid of particles,
     // connected with a variety of springs as described in the handout:
     // structural springs, shear springs and flex springs.
+    auto structural_horizontal_rest_length = width / (x_ - 1);
+    auto structural_vertical_rest_length = height / (y_ - 1);
+    this->springs_.clear();
+    for (int x = 0; x < x_; x++) {
+        for (int y = 0; y < y_; y++) {
+            this->current_state_[pos_idx(x, y)] = Vec3f(width * x / (x_ - 1) - 0.5f * width, -height * y / (y_ - 1), 0);
+            if (x + 1 < x_) {
+                // Structural
+                this->springs_.emplace_back(particle_idx(x, y), particle_idx(x + 1, y), spring_k, structural_horizontal_rest_length);
+            }
+            if (y + 1 < y_) {
+                // Structural
+                this->springs_.emplace_back(particle_idx(x, y), particle_idx(x, y + 1), spring_k, structural_vertical_rest_length);
+            }
+        }
+    }
 }
 
 State ClothSystem::evalF(const State &state) const {
@@ -217,6 +251,23 @@ State ClothSystem::evalF(const State &state) const {
     auto f = State(2 * n);
     // YOUR CODE HERE (R5)
     // This will be much like in R2 and R4.
+    for (auto const &spring : this->springs_) {
+        f[vel_idx(spring.i1)] += fSpring(state[pos_idx(spring.i1)], state[pos_idx(spring.i2)], spring.k, spring.rlen);
+        f[vel_idx(spring.i2)] += fSpring(state[pos_idx(spring.i2)], state[pos_idx(spring.i1)], spring.k, spring.rlen);
+    }
+
+    for (int x = 0; x < x_; x++) {
+        for (int y = 0; y < y_; y++) {
+            f[pos_idx(x, y)] = state[vel_idx(x, y)];
+            f[vel_idx(x, y)] += fGravity(mass) + fDrag(state[vel_idx(x, y)], drag_k);
+            f[vel_idx(x, y)] /= mass;
+        }
+    }
+    // Fixed particle
+    f[0] = Vec3f(0.0f);
+    f[1] = Vec3f(0.0f);
+    f[pos_idx(x_ - 1, 0)] = Vec3f(0.0f);
+    f[vel_idx(x_ - 1, 0)] = Vec3f(0.0f);
     return f;
 }
 

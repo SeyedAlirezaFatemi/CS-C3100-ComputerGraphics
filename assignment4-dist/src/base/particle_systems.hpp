@@ -106,6 +106,12 @@ public:
 private:
     unsigned x_, y_;
     std::vector<Spring> springs_;
+
+    int pos_idx(int x, int y) const;
+    int pos_idx(int idx) const;
+    int vel_idx(int x, int y) const;
+    int vel_idx(int idx) const;
+    int particle_idx(int x, int y) const;
 };
 
 class FluidSystem : public ParticleSystem {
