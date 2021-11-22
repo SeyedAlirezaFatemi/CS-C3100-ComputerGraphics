@@ -287,6 +287,14 @@ State ClothSystem::evalF(const State &state) const {
             f[vel_idx(x, y)] /= mass;
         }
     }
+    // EXTRA: Wind
+    if (this->wind_) {
+        for (int x = 0; x < x_; x++) {
+            for (int y = 0; y < y_; y++) {
+                f[vel_idx(x, y)] += this->wind_direction_;
+            }
+        }
+    }
     // Fixed particle
     f[0] = Vec3f(0.0f);
     f[1] = Vec3f(0.0f);

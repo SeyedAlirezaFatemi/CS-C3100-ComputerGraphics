@@ -102,10 +102,16 @@ public:
     Points getPoints() override;
     Lines getLines() override;
     FW::Vec2i getSize() { return FW::Vec2i(x_, y_); }
+    // EXTRA: Wind
+    void setWindDirection(FW::Vec3f wind_direction) { wind_direction_ = wind_direction; }
+    void setWind(bool wind) { wind_ = wind; }
 
 private:
     unsigned x_, y_;
     std::vector<Spring> springs_;
+    // EXTRA: Wind
+    bool wind_;
+    FW::Vec3f wind_direction_;
 
     int pos_idx(int x, int y) const;
     int pos_idx(int idx) const;

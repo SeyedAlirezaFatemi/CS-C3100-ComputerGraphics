@@ -43,6 +43,8 @@ App::App(void)
       spring_system_(),
       pendulum_system_(10),
       cloth_system_(20, 20),
+      wind_(false),
+      wind_changed_(false),
       initial_implicit_(false) {
     static_assert(is_standard_layout<Vertex>::value, "struct Vertex must be standard layout to use offsetof");
     initRendering();
@@ -70,6 +72,7 @@ App::App(void)
 #endif
     common_ctrl_.addSeparator();
     common_ctrl_.addToggle(&shading_toggle_, FW_KEY_T, "Toggle cloth rendering mode (T)", &shading_mode_changed_);
+    common_ctrl_.addToggle(&wind_, FW_KEY_W, "Toggle wind (W)", &wind_changed_);
 #ifdef COMPUTE_CLOTH_MODULE
     common_ctrl_.addButton(&fireBullet, FW_KEY_SPACE, "EXTRA: Fire bullet from mouse position (SPACE)");
 #endif
@@ -129,6 +132,17 @@ bool App::handleEvent(const Window::Event &ev) {
     if (shading_mode_changed_) {
         common_ctrl_.message(shading_toggle_ ? "EXTRA: Surface rendering" : "Wireframe rendering");
         shading_mode_changed_ = false;
+    }
+
+    // EXTRA: Wind
+    if (wind_changed_) {
+        common_ctrl_.message(wind_ ? "It's a windy day!" : "Where did all the wind go?");
+        this->cloth_system_.setWind(wind_);
+        if (wind_) {
+            srand(time(0));
+            this->cloth_system_.setWindDirection(FW::Vec3f(rand(), rand(), rand()).normalized());
+        }
+        wind_changed_ = false;
     }
 
     if (ev.type == Window::EventType_KeyDown) {
