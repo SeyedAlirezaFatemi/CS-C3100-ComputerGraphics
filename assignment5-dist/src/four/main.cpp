@@ -157,8 +157,11 @@ GLuint render(RayTracer &ray_tracer, SceneParser &scene, const Args &args) {
                 // should linearly increase from 0 to 1 as the y coordinate increases from 0 to args.height. Since
                 // our image is two-dimensional we can't map blue to a simple linear function and just set it to 1.
 
-                //if (args.display_uv)
-                //	sample_color = ...
+                // auto x = i;
+                // auto y = j;
+
+                if (args.display_uv)
+                    sample_color = FW::Vec3f(static_cast<float>(i) / static_cast<float>(args.height), static_cast<float>(j) / static_cast<float>(args.width), 1.0f);
 
                 image->setVec4f(Vec2i(i, j), Vec4f(sample_color, 1));
                 if (depth_image) {
