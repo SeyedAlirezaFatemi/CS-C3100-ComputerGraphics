@@ -16,8 +16,11 @@ public:
         // YOUR CODE HERE (R1)
         // Given floating-point pixel coordinates (px,py), you should return the corresponding normalized screen coordinates in [-1,1]^2
         // Pay attention to which direction is "up" :)
-
-        return FW::Vec2f();
+        // x -- +
+        // y
+        // |
+        // +
+        return FW::Vec2f(2.0f * (pixel.x - imageSize.x / 2.0f) / imageSize.x, -2.0f * (pixel.y - imageSize.y / 2.0f) / imageSize.y);
     }
 
     virtual float getTMin() const = 0;
@@ -68,7 +71,7 @@ public:
     virtual Ray generateRay(const FW::Vec2f &point) {
         // YOUR CODE HERE (R1)
         // Generate a ray with the given screen coordinates, which you should assume lie in [-1,1]^2
-        return Ray(FW::Vec3f(0.0f), FW::Vec3f(0.0f));
+        return Ray(this->center + point.x * this->size * this->horizontal / 2.0f + point.y * this->size * this->up / 2.0f, this->direction);
     }
 
     bool isOrtho() const override { return true; }
