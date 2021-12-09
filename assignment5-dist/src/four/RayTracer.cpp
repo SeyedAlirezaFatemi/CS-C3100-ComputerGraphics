@@ -64,7 +64,16 @@ Vec3f RayTracer::traceRay(Ray &ray, float tmin, int bounces, float refr_index, H
     // YOUR CODE HERE (R1)
     // Apply ambient lighting using the ambient light of the scene
     // and the diffuse color of the material.
-    Vec3f answer = m->diffuse_color(point) * this->scene_.getAmbientLight();
+    Vec3f color = m->diffuse_color(point) * this->scene_.getAmbientLight();
+    FW::Vec3f dir_to_light;
+    FW::Vec3f incident_intensity;
+    FW::Vec3f p;
+    for (size_t i = 0; i < this->scene_.getNumLights(); i++) {
+        float distance;
+        this->scene_.getLight(i)->getIncidentIllumination(p, dir_to_light, incident_intensity, distance);
+        color += m->shade(ray, hit, dir_to_light, incident_intensity, false);
+    }
+
 
     // YOUR CODE HERE (R4 & R7)
     // For R4, loop over all the lights in the scene and add their contributions to the answer.
@@ -97,5 +106,5 @@ Vec3f RayTracer::traceRay(Ray &ray, float tmin, int bounces, float refr_index, H
             // REMEMBER you need to account for the possibility of total internal reflection as well.
         }
     }
-    return answer;
+    return color;
 }

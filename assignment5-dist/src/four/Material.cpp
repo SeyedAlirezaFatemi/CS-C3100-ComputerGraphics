@@ -21,7 +21,11 @@ Vec3f PhongMaterial::shade(const Ray &ray, const Hit &hit,
     // anything if the light is below the local horizon!
 
     Vec3f answer = Vec3f(0.0f);
-
+    if (shade_back) {
+        answer += FW::abs(FW::dot(hit.normal, dir_to_light)) * incident_intensity * hit.material->diffuse_color(ray.pointAtParameter(hit.t));
+    } else {
+        answer += std::max(FW::dot(hit.normal, dir_to_light), 0.0f) * incident_intensity * hit.material->diffuse_color(ray.pointAtParameter(hit.t));
+    }
     return answer;
 }
 

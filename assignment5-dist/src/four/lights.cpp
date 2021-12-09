@@ -16,6 +16,9 @@ void DirectionalLight::getIncidentIllumination(const Vec3f &p,
     // YOUR CODE HERE (R4)
     // You should fill in the appropriate information about the "infinitely distant" light
     // for the renderer to use. See the comment in the base class for extra information.
+    dir_to_light = -this->direction_;
+    incident_intensity = this->intensity_;
+    distance = INFINITY;
 }
 
 PointLight::PointLight(const Vec3f &position, const Vec3f &intensity,
