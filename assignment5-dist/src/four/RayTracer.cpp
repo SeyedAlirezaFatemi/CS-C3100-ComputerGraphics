@@ -71,7 +71,7 @@ Vec3f RayTracer::traceRay(Ray &ray, float tmin, int bounces, float refr_index, H
     for (size_t i = 0; i < this->scene_.getNumLights(); i++) {
         float distance;
         this->scene_.getLight(i)->getIncidentIllumination(p, dir_to_light, incident_intensity, distance);
-        color += m->shade(ray, hit, dir_to_light, incident_intensity, false);
+        color += m->shade(ray, hit, dir_to_light, incident_intensity, this->args_.shade_back);
     }
 
 

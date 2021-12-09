@@ -21,11 +21,16 @@ Vec3f PhongMaterial::shade(const Ray &ray, const Hit &hit,
     // anything if the light is below the local horizon!
 
     Vec3f answer = Vec3f(0.0f);
-    if (shade_back) {
-        answer += FW::abs(FW::dot(hit.normal, dir_to_light)) * incident_intensity * hit.material->diffuse_color(ray.pointAtParameter(hit.t));
-    } else {
-        answer += std::max(FW::dot(hit.normal, dir_to_light), 0.0f) * incident_intensity * hit.material->diffuse_color(ray.pointAtParameter(hit.t));
+    Vec3f dir_to_eye = FW::normalize(ray.origin - ray.pointAtParameter(hit.t));
+    auto normal = hit.normal;
+    if (shade_back && dir_to_eye.dot(normal) < 0.0f) {
+        normal *= -1.0f;
     }
+    // Diffuse
+    answer += std::max(FW::dot(hit.normal, dir_to_light), 0.0f) * incident_intensity * hit.material->diffuse_color(ray.pointAtParameter(hit.t));
+    // Specular
+    auto ideal_reflection = FW::normalize(-dir_to_light + 2 * dir_to_light.dot(normal) * normal);
+    answer += incident_intensity * this->specular_color() * FW::pow(std::max(0.0f, FW::dot(ideal_reflection, dir_to_eye)), this->exponent());
     return answer;
 }
 

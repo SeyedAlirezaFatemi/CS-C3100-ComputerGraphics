@@ -39,4 +39,7 @@ void PointLight::getIncidentIllumination(const Vec3f &p,
     // quadratic_attenuation_, linear_attenuation_ and constant_attenuation_.
     // To facilitate the implementation of Phong, do not take the
     // incident cosine into account here.
+    dir_to_light = FW::normalize(this->position_ - p);
+    distance = FW::length(this->position_ - p);
+    incident_intensity = this->intensity_ / (this->quadratic_attenuation_ * distance * distance + this->linear_attenuation_ * distance + this->constant_attenuation_);
 }
