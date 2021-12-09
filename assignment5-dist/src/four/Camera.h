@@ -89,20 +89,22 @@ private:
 
 class PerspectiveCamera : public Camera {
 public:
+    float d;
+
     PerspectiveCamera(const FW::Vec3f &center_, const FW::Vec3f &direction_, const FW::Vec3f &up_, float fov_angle) {
         this->center = center_;
         this->direction = direction_.normalized();
         this->horizontal = cross(direction_, up_).normalized();
         this->up = cross(horizontal, direction_).normalized();
         this->fov_angle = fov_angle;
+        this->d = 1.0f / FW::tan(this->fov_angle / 2.0f);
     }
 
     virtual Ray generateRay(const FW::Vec2f &point) {
         // YOUR CODE HERE (R3)
         // Generate a ray with the given screen coordinates, which you should assume lie in [-1,1]^2
         // How to do this is described in the lecture notes.
-
-        return Ray(FW::Vec3f(0.0f), FW::Vec3f(0.0f));
+        return Ray(this->center, FW::normalize(point.x * this->horizontal + point.y * this->up + this->d * this->direction));
     }
 
     bool isOrtho() const override { return false; }
