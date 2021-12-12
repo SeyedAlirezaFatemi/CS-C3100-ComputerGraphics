@@ -34,10 +34,59 @@ bool Group::intersect(const Ray &r, Hit &h, float tmin) const {
     return intersected;
 }
 
-bool Box::intersect(const Ray &r, Hit &h, float tmin) const {
+bool Box::intersect(const Ray &r, Hit &h, float t_min) const {
     // YOUR CODE HERE (EXTRA)
     // Intersect the box with the ray!
+    float tmin, tmax, tymin, tymax, tzmin, tzmax;
+    Vec3f invdir = 1.0f / r.direction;
+    // Vec3f normal(0.0f, 1.0f, 0.0f);
+    Vec3f normal(1.0f, 0.0f, 0.0f);
+    if (invdir.x >= 0) {
+        tmin = (min_.x - r.origin.x) * invdir.x;
+        tmax = (max_.x - r.origin.x) * invdir.x;
+    } else {
+        tmin = (max_.x - r.origin.x) * invdir.x;
+        tmax = (min_.x - r.origin.x) * invdir.x;
+        normal *= -1;
+    }
+    if (invdir.y >= 0) {
+        tymin = (min_.y - r.origin.y) * invdir.y;
+        tymax = (max_.y - r.origin.y) * invdir.y;
+    } else {
+        tymin = (max_.y - r.origin.y) * invdir.y;
+        tymax = (min_.y - r.origin.y) * invdir.y;
+    }
 
+
+    if ((tmin > tymax) || (tymin > tmax))
+        return false;
+    if (tymin > tmin) {
+        tmin = tymin;
+        normal = (invdir.y >= 0) ? Vec3f(0.0f, 1.0f, 0.0f) : Vec3f(0.0f, -1.0f, 0.0f);
+    }
+    if (tymax < tmax)
+        tmax = tymax;
+
+    if (invdir.z >= 0) {
+        tymin = (min_.z - r.origin.z) * invdir.z;
+        tymax = (max_.z - r.origin.z) * invdir.z;
+    } else {
+        tymin = (max_.z - r.origin.z) * invdir.z;
+        tymax = (min_.z - r.origin.z) * invdir.z;
+    }
+
+    if ((tmin > tzmax) || (tzmin > tmax))
+        return false;
+    if (tzmin > tmin) {
+        tmin = tzmin;
+        normal = (invdir.z >= 0) ? Vec3f(0.0f, 0.0f, 1.0f) : Vec3f(0.0f, 0.0f, -1.0f);
+    }
+    if (tzmax < tmax)
+        tmax = tzmax;
+    if (tmin > t_min) {
+        h.set(tmin, this->material_, normal);
+        return true;
+    }
     return false;
 }
 
