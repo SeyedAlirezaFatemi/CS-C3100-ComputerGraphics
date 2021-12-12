@@ -32,6 +32,13 @@ namespace {
         // You should only pass in normalized vectors!
         // The function should return true if the computation was successful, and false
         // if the transmitted direction can't be computed due to total internal reflection.
+        const auto cos_theta_i = FW::dot(normal, -incoming);
+        const auto eta_r = index_t / index_i;
+        auto temp = 1.0f - eta_r * eta_r * (1 - cos_theta_i * cos_theta_i);
+        if (temp < 0) {
+            return false;
+        }
+        transmitted = FW::normalize((eta_r * cos_theta_i - FW::sqrt(temp)) * normal + eta_r * incoming);
         return true;
     }
 
@@ -53,6 +60,10 @@ Vec3f RayTracer::traceRay(Ray &ray, float tmin, int bounces, float refr_index, H
     // if the ray missed, we return the background color.
     if (!intersect)
         return scene_.getBackgroundColor();
+
+    if (ray.is_inside) {
+        hit.normal = -hit.normal;
+    }
 
     Material *m = hit.material;
     assert(m != nullptr);
@@ -120,6 +131,19 @@ Vec3f RayTracer::traceRay(Ray &ray, float tmin, int bounces, float refr_index, H
             // should use the material's refractive index. Remember to modulate the result
             // with the material's refractiveColor().
             // REMEMBER you need to account for the possibility of total internal reflection as well.
+            Vec3f transmitted_direction;
+            bool did_transmit = transmittedDirection(normal, ray.direction, refr_index, ray.is_inside ? 1.0f : m->refraction_index(point), transmitted_direction);
+            if (did_transmit) {
+                Ray transmission_ray{ray.pointAtParameter(hit.t + EPSILON), transmitted_direction};
+                transmission_ray.is_inside = !ray.is_inside;
+                auto transmission_hit = Hit(FLT_MAX);
+                color += m->transparent_color(point) * this->traceRay(transmission_ray, EPSILON, bounces - 1, ray.is_inside ? 1.0f : m->refraction_index(point), transmission_hit, Vec3f(1.0f, 1.0f, 0.0f));
+            } else {
+                const auto mirror_direction = mirrorDirection(hit.normal, ray.direction);
+                Ray reflection_ray{point, mirror_direction};
+                auto reflection_hit = Hit(FLT_MAX);
+                color += m->transparent_color(point) * this->traceRay(reflection_ray, EPSILON, bounces - 1, refr_index, reflection_hit, Vec3f(1.0f, 1.0f, 0.0f));
+            }
         }
     }
     return color;
