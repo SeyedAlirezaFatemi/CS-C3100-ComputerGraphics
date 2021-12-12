@@ -65,15 +65,6 @@ Vec3f RayTracer::traceRay(Ray &ray, float tmin, int bounces, float refr_index, H
     // Apply ambient lighting using the ambient light of the scene
     // and the diffuse color of the material.
     Vec3f color = m->diffuse_color(point) * this->scene_.getAmbientLight();
-    FW::Vec3f dir_to_light;
-    FW::Vec3f incident_intensity;
-    FW::Vec3f p;
-    for (size_t i = 0; i < this->scene_.getNumLights(); i++) {
-        float distance;
-        this->scene_.getLight(i)->getIncidentIllumination(p, dir_to_light, incident_intensity, distance);
-        color += m->shade(ray, hit, dir_to_light, incident_intensity, this->args_.shade_back);
-    }
-
 
     // YOUR CODE HERE (R4 & R7)
     // For R4, loop over all the lights in the scene and add their contributions to the answer.
@@ -81,6 +72,26 @@ Vec3f RayTracer::traceRay(Ray &ray, float tmin, int bounces, float refr_index, H
     // into the debug_rays list similar to what is done to the primary rays after intersection.
     // For R7, if args_.shadows is on, also shoot a shadow ray from the hit point to the light
     // to confirm it isn't blocked; if it is, ignore the contribution of the light.
+    FW::Vec3f dir_to_light;
+    FW::Vec3f incident_intensity;
+    FW::Vec3f p;
+    for (size_t i = 0; i < this->scene_.getNumLights(); i++) {
+        float distance;
+        this->scene_.getLight(i)->getIncidentIllumination(p, dir_to_light, incident_intensity, distance);
+        if (this->args_.shadows) {
+            Ray shadow_ray{point, dir_to_light};
+            bool blocked = false;
+            auto shadow_hit = Hit(FLT_MAX);
+            if (scene_.getGroup()) {
+                blocked = scene_.getGroup()->intersect(shadow_ray, shadow_hit, EPSILON);
+            }
+            if (blocked) {
+                // In shadow. Don't shade!
+                continue;
+            }
+        }
+        color += m->shade(ray, hit, dir_to_light, incident_intensity, this->args_.shade_back);
+    }
 
     // are there bounces left?
     if (bounces >= 1) {
