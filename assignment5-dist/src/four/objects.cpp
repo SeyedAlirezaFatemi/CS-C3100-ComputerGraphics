@@ -76,7 +76,12 @@ bool Transform::intersect(const Ray &r, Hit &h, float tmin) const {
     // the ray direction, you can just keep the t value and do not need to
     // recompute it!
     // Remember how points, directions, and normals are transformed differently!
-
+    Ray new_ray{this->inverse_ * Vec4f(r.origin, 1.0f).getXYZ(), (this->inverse_ * Vec4f(r.direction, 0.0f)).getXYZ()};
+    auto result = this->object_.get()->intersect(new_ray, h, tmin);
+    if (result) {
+        h.set(h.t, h.material, FW::normalize((this->inverse_transpose_ * Vec4f(h.normal, 0.0f)).getXYZ()));
+        return result;
+    }
     return false;
 }
 
