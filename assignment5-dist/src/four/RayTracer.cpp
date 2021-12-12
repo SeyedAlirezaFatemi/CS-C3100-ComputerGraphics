@@ -21,7 +21,7 @@ namespace {
         // YOUR CODE HERE (R8)
         // Pay attention to the direction which things point towards, and that you only
         // pass in normalized vectors.
-        return Vec3f();
+        return FW::normalize(incoming - 2.0f * (incoming.dot(normal)) * normal);
     }
 
     bool transmittedDirection(const Vec3f &normal, const Vec3f &incoming,
@@ -59,7 +59,7 @@ Vec3f RayTracer::traceRay(Ray &ray, float tmin, int bounces, float refr_index, H
 
     // get the intersection point and normal.
     Vec3f normal = hit.normal;
-    Vec3f point = ray.pointAtParameter(hit.t);
+    const Vec3f point = ray.pointAtParameter(hit.t);
 
     // YOUR CODE HERE (R1)
     // Apply ambient lighting using the ambient light of the scene
@@ -86,6 +86,7 @@ Vec3f RayTracer::traceRay(Ray &ray, float tmin, int bounces, float refr_index, H
                 blocked = scene_.getGroup()->intersect(shadow_ray, shadow_hit, EPSILON);
             }
             if (blocked) {
+                debug_rays.emplace_back(shadow_ray.origin, shadow_ray.direction * shadow_hit.t, shadow_hit.normal, Vec3f(1.0));
                 // In shadow. Don't shade!
                 continue;
             }
@@ -101,6 +102,10 @@ Vec3f RayTracer::traceRay(Ray &ray, float tmin, int bounces, float refr_index, H
             // Generate and trace a reflected ray to the ideal mirror direction and add
             // the contribution to the result. Remember to modulate the returned light
             // by the reflective color of the material of the hit point.
+            const auto mirror_direction = mirrorDirection(hit.normal, ray.direction);
+            Ray reflection_ray{point, mirror_direction};
+            auto reflection_hit = Hit(FLT_MAX);
+            color += m->reflective_color(point) * this->traceRay(reflection_ray, EPSILON, bounces - 1, refr_index, reflection_hit, Vec3f(1.0f, 1.0f, 0.0f));
         }
 
         // refraction, but only if surface is transparent!
