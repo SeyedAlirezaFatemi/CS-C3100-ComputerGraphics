@@ -9,6 +9,7 @@ struct Ray
 	Ray(const FW::Vec3f& orig, const FW::Vec3f& dir) {
 		origin = orig;
 		direction = dir;
+		is_inside = false;
 	}
 
 	FW::Vec3f pointAtParameter(float t) const {
@@ -17,6 +18,8 @@ struct Ray
 
 	FW::Vec3f origin;
 	FW::Vec3f direction;
+	// Refraction
+	bool is_inside;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const FW::Vec3f& v) {
