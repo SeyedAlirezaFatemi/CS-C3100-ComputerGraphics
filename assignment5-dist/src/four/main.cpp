@@ -116,6 +116,9 @@ GLuint render(RayTracer &ray_tracer, SceneParser &scene, const Args &args) {
         // Loop over pixels on a scanline
         for (int i = 0; i < args.width; ++i) {
             // Loop through all the samples for this pixel.
+            Vec3f final_color{0.0f};
+            Vec3f final_normal{0.0f};
+            float final_f{0.0f};
             for (int n = 0; n < args.num_samples; ++n) {
                 // Get the offset of the sample inside the pixel.
                 // You need to fill in the implementation for this function when implementing supersampling.
@@ -163,20 +166,36 @@ GLuint render(RayTracer &ray_tracer, SceneParser &scene, const Args &args) {
                 if (args.display_uv)
                     sample_color = FW::Vec3f(static_cast<float>(i) / static_cast<float>(args.height), static_cast<float>(j) / static_cast<float>(args.width), 1.0f);
 
-                image->setVec4f(Vec2i(i, j), Vec4f(sample_color, 1));
+                final_color += sample_color;
+
                 if (depth_image) {
                     // YOUR CODE HERE (R2)
                     // Here you should linearly map the t range [depth_min, depth_max] to the inverted range [1,0] for visualization
                     // Note the inversion; closer objects should appear brighter.
                     float f = 1.0f - std::min(std::max(hit.t - args.depth_min, 0.0f) / (args.depth_max - args.depth_min), 1.0f);
-                    depth_image->setVec4f(Vec2i(i, j), Vec4f(Vec3f(f), 1));
+                    final_f += f;
                 }
+
                 if (normals_image) {
                     Vec3f normal = hit.normal;
                     Vec3f col(fabs(normal[0]), fabs(normal[1]), fabs(normal[2]));
                     col = col.clamp(Vec3f(0), Vec3f(1));
-                    normals_image->setVec4f(Vec2i(i, j), Vec4f(col, 1));
+                    final_normal += col;
                 }
+            }
+            auto num_samples = static_cast<float>(args.num_samples);
+
+            final_color /= num_samples;
+            image->setVec4f(Vec2i(i, j), Vec4f(final_color, 1));
+
+            if (depth_image) {
+                final_f /= num_samples;
+                depth_image->setVec4f(Vec2i(i, j), Vec4f(Vec3f(final_f), 1));
+            }
+
+            if (normals_image) {
+                final_normal /= num_samples;
+                normals_image->setVec4f(Vec2i(i, j), Vec4f(final_normal, 1));
             }
         }
         ++lines_done;

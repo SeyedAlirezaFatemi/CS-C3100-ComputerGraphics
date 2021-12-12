@@ -24,8 +24,7 @@ Vec2f UniformSampler::getSamplePosition(int i) {
     (void) i;
     // YOUR CODE HERE (R9)
     // Return a uniformly distributed random 2-vector within the unit square [0,1]^2
-
-    return Vec2f();
+    return this->m_generator.getVec2f(0, 1);
 }
 
 RegularSampler::RegularSampler(int nSamples) : Sampler(nSamples) {
