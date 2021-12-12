@@ -140,6 +140,31 @@ bool Triangle::intersect(const Ray &r, Hit &h, float tmin) const {
     // YOUR CODE HERE (R6)
     // Intersect the triangle with the ray!
     // Again, pay attention to respecting tmin and h.t!
+    // Let's use barycentric coordinates
+    const auto &a = this->vertices_[0];
+    const auto &b = this->vertices_[1];
+    const auto &c = this->vertices_[2];
+    const auto &ray_dir = r.direction;
+    const auto &ray_origin = r.origin;
+    const auto normal = FW::normalize(FW::cross(b - a, c - a));
+    if (normal.dot(ray_dir) == 0) {
+        // Parallel
+        return false;
+    }
+    FW::Mat3f A;
+    A.setCol(0, a - b);
+    A.setCol(1, a - c);
+    A.setCol(2, ray_dir);
+    FW::Vec3f right_hand = a - ray_origin;
+    auto res = FW::invert(A) * right_hand;
+    const auto &beta = res[0];
+    const auto &gamma = res[1];
+    const auto &t = res[2];
+
+    if (beta >= 0 && gamma >= 0 && beta + gamma <= 1 && t < h.t && t > tmin) {
+        h.set(t, this->material_, normal);
+        return true;
+    }
     return false;
 }
 
