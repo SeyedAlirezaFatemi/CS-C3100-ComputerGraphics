@@ -38,8 +38,10 @@ Vec2f RegularSampler::getSamplePosition(int n) {
     // YOUR CODE HERE (R9)
     // Return a sample through the center of the Nth subpixel.
     // The starter code only supports one sample per pixel.
-    assert(n == 0);
-    return Vec2f(0.5f, 0.5f);
+    this->m_dim;
+    int col = n % this->m_dim;
+    int row = static_cast<int>(n / this->m_dim);
+    return Vec2f(1.0f / (2 * this->m_dim) + static_cast<float>(col) * 1.0f / (this->m_dim), 1.0f / (2 * this->m_dim) + static_cast<float>(row) * 1.0f / (this->m_dim));
 }
 
 JitteredSampler::JitteredSampler(int nSamples) : Sampler(nSamples) {
