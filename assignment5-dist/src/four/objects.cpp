@@ -37,6 +37,7 @@ bool Group::intersect(const Ray &r, Hit &h, float tmin) const {
 bool Box::intersect(const Ray &r, Hit &h, float t_min) const {
     // YOUR CODE HERE (EXTRA)
     // Intersect the box with the ray!
+    // With lots of help from https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection
     float tmin, tmax, tymin, tymax, tzmin, tzmax;
     Vec3f invdir = 1.0f / r.direction;
     // Vec3f normal(0.0f, 1.0f, 0.0f);
