@@ -159,7 +159,7 @@ void main()
 
 		vec3 L = normalize(lightDirections[i]);
 		vec3 Li = lightIntensities[i];
-		vec3 diffuse;
+		vec3 diffuse = diffuseColor.rgb * Li * max(dot(L, mappedNormal), 0.0);
 
 		// YOUR CODE HERE (R3, R4, R5)
 		// Compute the GGX specular contribution of this light.
@@ -170,6 +170,8 @@ void main()
 
 		if (setSpecularToZero)
 			specular = vec3(0, 0, 0);
+
+		light_contribution += specular + diffuse;
 
 		if (shadowMaps) {
 			// YOUR SHADOWS HERE: use lightDist and shadowUV, maybe modify Li
