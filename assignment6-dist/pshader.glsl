@@ -77,8 +77,12 @@ float G(vec3 V, vec3 L, vec3 H) {
 float Fr(vec3 L, vec3 H) {
 	const float n1 = 1.0; // air
 	const float n2 = 1.4; // surface
-
-	return 1.0;
+	float eta = n1 / n2;
+	float cos = dot(L, H);
+	float beta = sqrt((1. / pow(eta, 2.)) + (pow(cos, .2) - 1.));
+	float r_s = pow((cos - beta) / (cos + beta), 2.);
+	float r_p = pow((pow(eta, 2.) * beta - cos) / (pow(eta, 2.) * beta + cos), 2.);
+	return 0.5 * (r_p + r_s);
 }
 
 // 4: GGX distribution term D, 5: GGX geometry term G
