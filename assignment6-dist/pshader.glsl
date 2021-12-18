@@ -64,10 +64,12 @@ float D(vec3 N, vec3 H) {
 // The Smith geometry term G
 // YOUR CODE HERE (R4)
 float G1(vec3 X, vec3 H) {
-	return 1.;
+	float cos = dot(X, H);
+	float tan = sqrt(1 - pow(cos, 2.)) / cos;
+	return 2. / (1. + sqrt(1 + pow(roughness, 2.) * pow(tan, 2.)));
 }
 float G(vec3 V, vec3 L, vec3 H) {
-	return 1.;
+	return G1(V, H) * G1(L, H);
 }
 
 // Fr is the Fresnel equation for dielectrics
