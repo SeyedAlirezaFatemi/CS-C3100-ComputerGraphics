@@ -14,7 +14,7 @@ R4 Loading a large mesh from file            (3p): done
 
 Version control
 Rotate and scale transforms
-Transforming normals in vertex shader +  Efficiently transforming normals in vertex shader
+Transforming normals in vertex shader + Efficiently transforming normals in vertex shader
 Better camera
 Animation
 Viewport correction + Viewport and perspective
@@ -22,4 +22,4 @@ Add support for loading another file format (ASCII PLY)
 Mesh Simplification (in App::simplifyMesh):
     "Surface Simplification Using Quadric Error Metrics". Press 5 and load a ply file.
     The code simplifies the mesh by removing 100 faces. You can change this in the code.
-    This is not a perfect implementation since it does not perform checks before and after edge collapses. But it works pretty nice!
+    This is not a perfect implementation since it does not perform checks before and after edge collapses.
