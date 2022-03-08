@@ -15,6 +15,7 @@ R5 Smoothing the mesh by repositioning old vertices (2p): done
 
 Loop subdivision with boundary
 Local coordinate frame
-Surfaces of revolution and generalized cylinders.
+Surfaces of revolution
+Generalized cylinders
 Color subdivision levels
 Bezier interpolation for orientations (There is a minor bug in this feature)
